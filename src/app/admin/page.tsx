@@ -1,5 +1,5 @@
-import { PhotosManager } from "@/components/PhotosManager";
-import { TaxonomyManager } from "@/components/TaxonomyManager";
+import { PhotosManager } from "@/components/photos-manager";
+import { TaxonomyManager } from "@/components/taxonomy-manager";
 
 export default function AdminHomePage() {
   return (
