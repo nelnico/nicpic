@@ -82,7 +82,7 @@ export function PhotoDialog({
   const [iso, setIso] = useState(photo?.iso ?? "none");
   const [aperture, setAperture] = useState(photo?.aperture ?? "none");
   const [shutterSpeed, setShutterSpeed] = useState(photo?.shutterSpeed ?? "none");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
 
@@ -113,14 +113,44 @@ export function PhotoDialog({
     };
   }
 
+  async function uploadOne(f: File, label: string) {
+    setStatus(`${label} — reading image…`);
+    const { width, height } = await getImageDimensions(f);
+
+    setStatus(`${label} — requesting upload URL…`);
+    const presignRes = await fetch("/api/admin/presign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename: f.name, contentType: f.type }),
+    });
+    if (!presignRes.ok) throw new Error(`${label}: failed to get upload URL.`);
+    const { presignedUrl, key, publicUrl } = await presignRes.json();
+
+    setStatus(`${label} — uploading to R2…`);
+    const uploadRes = await fetch(presignedUrl, {
+      method: "PUT",
+      body: f,
+      headers: { "Content-Type": f.type },
+    });
+    if (!uploadRes.ok) throw new Error(`${label}: upload to R2 failed.`);
+
+    setStatus(`${label} — saving…`);
+    const saveRes = await fetch("/api/admin/photos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...metaBody(), r2Key: key, r2Url: publicUrl, width, height }),
+    });
+    if (!saveRes.ok) throw new Error(`${label}: failed to save.`);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!categoryId) {
       setStatus("Please choose a category.");
       return;
     }
-    if (!isEdit && !file) {
-      setStatus("Please choose an image file.");
+    if (!isEdit && files.length === 0) {
+      setStatus("Please choose at least one image file.");
       return;
     }
 
@@ -135,39 +165,11 @@ export function PhotoDialog({
         });
         if (!res.ok) throw new Error("Failed to save changes.");
       } else {
-        setStatus("Reading image…");
-        const { width, height } = await getImageDimensions(file!);
-
-        setStatus("Requesting upload URL…");
-        const presignRes = await fetch("/api/admin/presign", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename: file!.name, contentType: file!.type }),
-        });
-        if (!presignRes.ok) throw new Error("Failed to get upload URL.");
-        const { presignedUrl, key, publicUrl } = await presignRes.json();
-
-        setStatus("Uploading to R2…");
-        const uploadRes = await fetch(presignedUrl, {
-          method: "PUT",
-          body: file!,
-          headers: { "Content-Type": file!.type },
-        });
-        if (!uploadRes.ok) throw new Error("Upload to R2 failed.");
-
-        setStatus("Saving photo…");
-        const saveRes = await fetch("/api/admin/photos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...metaBody(),
-            r2Key: key,
-            r2Url: publicUrl,
-            width,
-            height,
-          }),
-        });
-        if (!saveRes.ok) throw new Error("Failed to save photo.");
+        for (let i = 0; i < files.length; i++) {
+          const label =
+            files.length > 1 ? `Photo ${i + 1} of ${files.length}` : "Photo";
+          await uploadOne(files[i], label);
+        }
       }
 
       onSaved();
@@ -326,13 +328,23 @@ export function PhotoDialog({
 
           {!isEdit && (
             <div className="space-y-2">
-              <Label htmlFor="pd-file">Image file</Label>
+              <Label htmlFor="pd-file">Image files</Label>
               <Input
                 id="pd-file"
                 type="file"
                 accept="image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                multiple
+                onChange={(e) =>
+                  setFiles(e.target.files ? Array.from(e.target.files) : [])
+                }
               />
+              {files.length > 1 && (
+                <p className="text-xs text-muted-foreground">
+                  {files.length} photos selected — all will share the same
+                  category, location, date, gear, and tags. Edit titles &amp;
+                  descriptions individually afterwards.
+                </p>
+              )}
             </div>
           )}
 
@@ -375,7 +387,9 @@ export function PhotoDialog({
                   ? "Working…"
                   : isEdit
                     ? "Save changes"
-                    : "Upload photo"}
+                    : files.length > 1
+                      ? `Upload ${files.length} photos`
+                      : "Upload photo"}
               </Button>
             </div>
           </div>
