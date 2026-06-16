@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import { siteConfig } from "@/config/site";
+import { ContentGuard } from "@/components/ContentGuard";
 import "./globals.css";
 
 const inter = Inter({
@@ -37,7 +38,10 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${instrumentSerif.variable} ${jetBrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <ContentGuard />
+        {children}
+      </body>
     </html>
   );
 }

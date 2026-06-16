@@ -89,7 +89,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   )
     .filter(([, value]) => Boolean(value))
     .map(([label, value]) => ({ label, value }));
-  const hasSettings = settings.length > 0;
+  const hasSettings = settings.length > 0 || Boolean(photo.description);
 
   return (
     <div className="fade-in fixed inset-0 z-50 flex flex-col bg-background">
@@ -181,18 +181,27 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
               <Info className="h-5 w-5" strokeWidth={1.5} />
             </button>
             {infoOpen && (
-              <div className="absolute right-0 bottom-full mb-3 w-60 rounded-md border border-border bg-popover p-4 text-popover-foreground shadow-md">
-                <dl className="space-y-2.5">
-                  {settings.map((s) => (
-                    <div
-                      key={s.label}
-                      className="flex items-baseline justify-between gap-4"
-                    >
-                      <dt className="eyebrow text-muted-foreground">{s.label}</dt>
-                      <dd className="text-right text-sm">{s.value}</dd>
-                    </div>
-                  ))}
-                </dl>
+              <div className="absolute right-0 bottom-full mb-3 w-max rounded-md border border-border bg-popover p-4 text-popover-foreground shadow-md">
+                {photo.description && (
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold">{photo.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{photo.description}</p>
+                    {settings.length > 0 && <hr className="mt-3 border-border" />}
+                  </div>
+                )}
+                {settings.length > 0 && (
+                  <dl className="space-y-2.5">
+                    {settings.map((s) => (
+                      <div
+                        key={s.label}
+                        className="flex items-baseline justify-between gap-8"
+                      >
+                        <dt className="eyebrow text-muted-foreground">{s.label}</dt>
+                        <dd className="whitespace-nowrap text-sm">{s.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
               </div>
             )}
           </div>

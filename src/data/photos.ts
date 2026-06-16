@@ -16,6 +16,8 @@ export interface Photo {
   where: string;
   date: string;
   tags: string[];
+  /** Optional description ("" when none). */
+  description: string;
   // Optional gear / EXIF-style settings ("" when not set).
   camera: string;
   lens: string;

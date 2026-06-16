@@ -31,6 +31,7 @@ async function getGalleryData(): Promise<{
       width: p.width,
       height: p.height,
       title: p.title ?? "Untitled",
+      description: p.description ?? "",
       category: p.category.name,
       location: p.location?.name ?? "",
       where: p.takenWhere ?? "",
