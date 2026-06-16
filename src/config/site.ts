@@ -12,7 +12,7 @@ export const siteConfig = {
   /** Small tag shown next to the name in the nav (e.g. a country code). */
   eyebrow: process.env.NEXT_PUBLIC_SITE_EYEBROW ?? "ZA",
   /** Browser tab title / default <title>. */
-  title: process.env.NEXT_PUBLIC_SITE_TITLE ?? `${name} — Photography`,
+  title: process.env.NEXT_PUBLIC_SITE_TITLE ?? `${name} — photos`,
   /** <meta name="description">. */
   description:
     process.env.NEXT_PUBLIC_SITE_DESCRIPTION ?? "Photography portfolio.",

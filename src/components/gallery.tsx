@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Nav } from "@/components/Nav";
-import { FilterBar } from "@/components/FilterBar";
-import { PhotoCard } from "@/components/PhotoCard";
-import { Lightbox } from "@/components/Lightbox";
+import { Nav } from "@/components/nav";
+import { FilterBar } from "@/components/filter-bar";
+import { PhotoCard } from "@/components/photo-card";
+import { Lightbox } from "@/components/lightbox";
 import type { Category, Photo } from "@/data/photos";
 
 interface GalleryProps {

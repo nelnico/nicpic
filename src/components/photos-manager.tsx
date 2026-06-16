@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { PhotoDialog, type EditablePhoto } from "@/components/PhotoDialog";
+import { PhotoDialog, type EditablePhoto } from "@/components/photo-dialog";
 
 type Opt = { id: string; name: string };
 
