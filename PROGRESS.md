@@ -7,14 +7,20 @@
 
 ## ⏸ Where we are right now (resume here)
 
-**Done:** App fully built (admin + public Lovable gallery), **building green**, **Neon DB +
-Cloudflare R2 live and verified**. **Data model was changed** (2026-06-16): Category and
-Location are now **independent** — a Photo has a **required category** + an **optional
-location** (a location can be reused across categories). Admin now supports **add + delete**
-for both. The DB was **reset to empty**.
+**Done:** App fully built, **building green**, **Neon DB + Cloudflare R2 live**. Data model:
+Category required on a photo; **Location, Camera, Lens independent + optional + reusable**;
+optional **ISO / aperture / shutter** (strings). Lightbox shows **category — location** + an
+**info icon** revealing gear/settings.
+
+**Admin is now a single hub** (`/admin`): a **Photos** box (thumbnail grid, Upload button,
+click-to-edit, quick featured star) + four **taxonomy boxes** (Categories/Locations/Cameras/
+Lenses). Everything is **dialog-based**: photo Upload & Edit use `PhotoDialog`; taxonomy
+add/edit/delete use `TaxonomyManager`. Header is just the **logo (→ `/`) + Log out**. The old
+`/admin/upload`, `/admin/photos`, `/admin/categories`, `/admin/photos/[id]/edit` pages now
+**redirect to `/admin`**.
 
 **▶ MUST DO FIRST: restart `npm run dev`.** The schema changed and the Prisma client was
-regenerated, so a running dev server is stale.
+regenerated (Camera/Lens/EXIF added), so a running dev server is stale.
 
 **Then:**
 1. `/admin/login` (password `your-admin-password`) → `/admin/categories`: create your

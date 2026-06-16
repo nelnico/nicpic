@@ -17,6 +17,8 @@ async function getGalleryData(): Promise<{
       include: {
         category: true,
         location: true,
+        camera: true,
+        lens: true,
         tags: { include: { tag: true } },
       },
       // Featured photos pinned to the top, then newest first.
@@ -30,9 +32,15 @@ async function getGalleryData(): Promise<{
       height: p.height,
       title: p.title ?? "Untitled",
       category: p.category.name,
-      location: p.takenWhere ?? p.location?.name ?? "",
+      location: p.location?.name ?? "",
+      where: p.takenWhere ?? "",
       date: p.takenAt ? formatMonthYear(p.takenAt) : "",
       tags: p.tags.map((t) => t.tag.name),
+      camera: p.camera?.name ?? "",
+      lens: p.lens?.name ?? "",
+      iso: p.iso ?? "",
+      aperture: p.aperture ?? "",
+      shutterSpeed: p.shutterSpeed ?? "",
     }));
 
     const categories = [...new Set(photos.map((p) => p.category))].sort();

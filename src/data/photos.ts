@@ -10,7 +10,16 @@ export interface Photo {
   height: number;
   title: string;
   category: string;
+  /** Structured location name ("" when none). */
   location: string;
+  /** Free-text "where taken" detail ("" when none). */
+  where: string;
   date: string;
   tags: string[];
+  // Optional gear / EXIF-style settings ("" when not set).
+  camera: string;
+  lens: string;
+  iso: string;
+  aperture: string;
+  shutterSpeed: string;
 }

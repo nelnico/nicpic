@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
     include: {
       category: true,
       location: true,
+      camera: true,
+      lens: true,
       tags: { include: { tag: true } },
     },
     // Featured photos pinned to the top, then newest first.

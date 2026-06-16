@@ -1,89 +1,42 @@
-import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { PhotosManager } from "@/components/PhotosManager";
+import { TaxonomyManager } from "@/components/TaxonomyManager";
 
-export const dynamic = "force-dynamic";
-
-async function getStats() {
-  try {
-    const [photos, categories, locations] = await Promise.all([
-      prisma.photo.count(),
-      prisma.category.count(),
-      prisma.location.count(),
-    ]);
-    return { photos, categories, locations, error: false };
-  } catch {
-    return { photos: 0, categories: 0, locations: 0, error: true };
-  }
-}
-
-export default async function AdminDashboardPage() {
-  const stats = await getStats();
-
-  const links = [
-    {
-      href: "/admin/upload",
-      title: "Upload new photo",
-      description: "Add a photo to the portfolio.",
-    },
-    {
-      href: "/admin/photos",
-      title: "Manage photos",
-      description: "Edit featured status or delete photos.",
-    },
-    {
-      href: "/admin/categories",
-      title: "Categories & locations",
-      description: "Create the categories and locations you organise by.",
-    },
-  ];
-
+export default function AdminHomePage() {
   return (
-    <div className="mx-auto max-w-4xl p-6">
-      <h1 className="mb-6 text-2xl font-semibold">Admin Dashboard</h1>
+    <div className="mx-auto max-w-6xl space-y-8 p-6">
+      <PhotosManager />
 
-      {stats.error && (
-        <p className="mb-6 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-          Could not reach the database yet. Set <code>DATABASE_URL</code> in{" "}
-          <code>.env.local</code> and run the migration.
-        </p>
-      )}
-
-      <div className="mb-8 grid grid-cols-3 gap-4">
-        <Stat label="Photos" value={stats.photos} />
-        <Stat label="Categories" value={stats.categories} />
-        <Stat label="Locations" value={stats.locations} />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        {links.map((link) => (
-          <Link key={link.href} href={link.href}>
-            <Card className="h-full transition-colors hover:bg-accent">
-              <CardHeader>
-                <CardTitle className="text-base">{link.title}</CardTitle>
-                <CardDescription>{link.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
-        ))}
+      <div>
+        <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+          Library
+        </h2>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <TaxonomyManager
+            title="Categories"
+            noun="category"
+            kind="categories"
+            placeholder="e.g. People"
+          />
+          <TaxonomyManager
+            title="Locations"
+            noun="location"
+            kind="locations"
+            placeholder="e.g. Cape Town"
+          />
+          <TaxonomyManager
+            title="Cameras"
+            noun="camera"
+            kind="cameras"
+            placeholder="e.g. Sony A7 IV"
+          />
+          <TaxonomyManager
+            title="Lenses"
+            noun="lens"
+            kind="lenses"
+            placeholder="e.g. 24-70mm f/2.8"
+          />
+        </div>
       </div>
     </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="text-3xl font-bold">{value}</div>
-        <div className="text-sm text-muted-foreground">{label}</div>
-      </CardContent>
-    </Card>
   );
 }

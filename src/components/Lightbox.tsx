@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
-import { X, ArrowLeft, ArrowRight } from "lucide-react";
+import { X, ArrowLeft, ArrowRight, Info } from "lucide-react";
 import type { Photo } from "@/data/photos";
 
 interface LightboxProps {
@@ -17,6 +17,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const startX = useRef(0);
   const pointerId = useRef<number | null>(null);
 
@@ -47,6 +48,11 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
     };
   }, [handleKey]);
 
+  // Close the details panel when navigating between photos.
+  useEffect(() => {
+    setInfoOpen(false);
+  }, [index]);
+
   const onPointerDown = (e: React.PointerEvent) => {
     pointerId.current = e.pointerId;
     startX.current = e.clientX;
@@ -70,6 +76,20 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   };
 
   const translate = `calc(${-index * 100}% + ${dragX}px)`;
+
+  // Optional gear / settings shown in the info dropdown.
+  const settings = (
+    [
+      ["Camera", photo.camera],
+      ["Lens", photo.lens],
+      ["ISO", photo.iso],
+      ["Aperture", photo.aperture],
+      ["Shutter", photo.shutterSpeed],
+    ] as const
+  )
+    .filter(([, value]) => Boolean(value))
+    .map(([label, value]) => ({ label, value }));
+  const hasSettings = settings.length > 0;
 
   return (
     <div className="fade-in fixed inset-0 z-50 flex flex-col bg-background">
@@ -146,37 +166,77 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
       </div>
 
       {/* Metadata */}
-      <div className="border-t border-border px-6 py-6 md:px-10 md:py-8">
+      <div className="relative border-t border-border px-6 py-6 md:px-10 md:py-8">
+        {hasSettings && (
+          <div className="absolute right-6 top-6 md:right-10">
+            <button
+              type="button"
+              onClick={() => setInfoOpen((o) => !o)}
+              aria-label="Photo details"
+              aria-expanded={infoOpen}
+              className={`transition-colors hover:text-foreground ${
+                infoOpen ? "text-foreground" : "text-muted-foreground"
+              }`}
+            >
+              <Info className="h-5 w-5" strokeWidth={1.5} />
+            </button>
+            {infoOpen && (
+              <div className="absolute right-0 bottom-full mb-3 w-60 rounded-md border border-border bg-popover p-4 text-popover-foreground shadow-md">
+                <dl className="space-y-2.5">
+                  {settings.map((s) => (
+                    <div
+                      key={s.label}
+                      className="flex items-baseline justify-between gap-4"
+                    >
+                      <dt className="eyebrow text-muted-foreground">{s.label}</dt>
+                      <dd className="text-right text-sm">{s.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mx-auto flex max-w-[1600px] flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="eyebrow text-muted-foreground">{photo.category}</p>
+          <div className="pr-10">
+            <p className="eyebrow text-muted-foreground">
+              {photo.category}
+              {photo.location ? ` — ${photo.location}` : ""}
+            </p>
             <h2 className="mt-2 font-serif text-4xl leading-none md:text-5xl">
               {photo.title}
             </h2>
           </div>
 
           <dl className="grid grid-cols-2 gap-x-12 gap-y-4 sm:flex sm:flex-wrap sm:items-end sm:gap-x-14">
-            <div>
-              <dt className="eyebrow text-muted-foreground">Location</dt>
-              <dd className="mt-1.5 text-sm">{photo.location}</dd>
-            </div>
-            <div>
-              <dt className="eyebrow text-muted-foreground">Date</dt>
-              <dd className="mt-1.5 text-sm">{photo.date}</dd>
-            </div>
-            <div className="col-span-2 sm:col-auto">
-              <dt className="eyebrow text-muted-foreground">Tags</dt>
-              <dd className="mt-1.5 flex flex-wrap gap-2">
-                {photo.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="border border-border px-2.5 py-1 text-xs text-muted-foreground"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </dd>
-            </div>
+            {photo.where && (
+              <div>
+                <dt className="eyebrow text-muted-foreground">Where</dt>
+                <dd className="mt-1.5 text-sm">{photo.where}</dd>
+              </div>
+            )}
+            {photo.date && (
+              <div>
+                <dt className="eyebrow text-muted-foreground">Date</dt>
+                <dd className="mt-1.5 text-sm">{photo.date}</dd>
+              </div>
+            )}
+            {photo.tags.length > 0 && (
+              <div className="col-span-2 sm:col-auto">
+                <dt className="eyebrow text-muted-foreground">Tags</dt>
+                <dd className="mt-1.5 flex flex-wrap gap-2">
+                  {photo.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="border border-border px-2.5 py-1 text-xs text-muted-foreground"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            )}
           </dl>
         </div>
       </div>

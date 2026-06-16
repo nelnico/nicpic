@@ -22,23 +22,46 @@ model Location {
   createdAt DateTime @default(now())
 }
 
+model Camera {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  photos    Photo[]
+  createdAt DateTime @default(now())
+}
+
+model Lens {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  photos    Photo[]
+  createdAt DateTime @default(now())
+}
+
 model Photo {
-  id          String     @id @default(cuid())
-  title       String?
-  description String?
-  categoryId  String
-  category    Category   @relation(fields: [categoryId], references: [id])
-  locationId  String?
-  location    Location?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
-  takenAt     DateTime?
-  takenWhere  String?    // freetext e.g. "Near Lower Sabie Rest Camp"
-  r2Key       String     @unique
-  r2Url       String
-  width       Int
-  height      Int
-  featured    Boolean    @default(false)
-  tags        PhotoTag[]
-  createdAt   DateTime   @default(now())
+  id           String     @id @default(cuid())
+  title        String?
+  description  String?
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id])
+  locationId   String?
+  location     Location?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  cameraId     String?
+  camera       Camera?    @relation(fields: [cameraId], references: [id], onDelete: SetNull)
+  lensId       String?
+  lens         Lens?      @relation(fields: [lensId], references: [id], onDelete: SetNull)
+  iso          String?
+  aperture     String?
+  shutterSpeed String?
+  takenAt      DateTime?
+  takenWhere   String?    // freetext e.g. "Near Lower Sabie Rest Camp"
+  r2Key        String     @unique
+  r2Url        String
+  width        Int
+  height       Int
+  featured     Boolean    @default(false)
+  tags         PhotoTag[]
+  createdAt    DateTime   @default(now())
 }
 
 model Tag {

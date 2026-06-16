@@ -4,12 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { siteConfig } from "@/config/site";
 
-const links = [
-  { href: "/admin/upload", label: "Upload" },
-  { href: "/admin/photos", label: "Photos" },
-  { href: "/admin/categories", label: "Categories" },
-];
-
 export function AdminHeader() {
   const pathname = usePathname();
   const router = useRouter();
@@ -25,42 +19,21 @@ export function AdminHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+        {/* Logo → the live public site. */}
         <Link
-          href="/admin"
+          href="/"
           className="font-serif text-lg leading-none tracking-tight transition-opacity hover:opacity-70"
         >
-          {siteConfig.name}{" "}
-          <span className="eyebrow text-muted-foreground">admin</span>
+          {siteConfig.name}
         </Link>
-        <nav className="flex items-center gap-4 text-sm sm:gap-6">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={
-                pathname === l.href
-                  ? "text-foreground"
-                  : "text-muted-foreground transition-colors hover:text-foreground"
-              }
-            >
-              {l.label}
-            </Link>
-          ))}
-          <Link
-            href="/"
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            View site ↗
-          </Link>
-          <button
-            type="button"
-            onClick={logout}
-            className="cursor-pointer border-none bg-transparent text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Log out
-          </button>
-        </nav>
+        <button
+          type="button"
+          onClick={logout}
+          className="cursor-pointer border-none bg-transparent text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Log out
+        </button>
       </div>
     </header>
   );

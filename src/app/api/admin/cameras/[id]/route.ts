@@ -12,11 +12,8 @@ export async function PATCH(
   const { id } = await params;
   const { name } = await request.json();
   const slug = name.toLowerCase().replace(/\s+/g, "-");
-  const category = await prisma.category.update({
-    where: { id },
-    data: { name, slug },
-  });
-  return NextResponse.json(category);
+  const camera = await prisma.camera.update({ where: { id }, data: { name, slug } });
+  return NextResponse.json(camera);
 }
 
 export async function DELETE(
@@ -26,18 +23,8 @@ export async function DELETE(
   if (!(await verifySession())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
   const { id } = await params;
-
-  // A category is required on every photo, so block deletion while in use.
-  const count = await prisma.photo.count({ where: { categoryId: id } });
-  if (count > 0) {
-    return NextResponse.json(
-      { error: `Category is used by ${count} photo(s). Move or delete them first.` },
-      { status: 409 }
-    );
-  }
-
-  await prisma.category.delete({ where: { id } });
+  // Camera is optional on a photo; deleting clears it (onDelete: SetNull).
+  await prisma.camera.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }
