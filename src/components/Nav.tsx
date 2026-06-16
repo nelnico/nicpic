@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { siteConfig } from "@/config/site";
 
 export function Nav() {
   const [open, setOpen] = useState(false);
@@ -13,10 +14,10 @@ export function Nav() {
           className="flex items-baseline gap-2 transition-opacity hover:opacity-70"
         >
           <span className="font-serif text-2xl leading-none tracking-tight">
-            nicpic
+            {siteConfig.name}
           </span>
           <span className="eyebrow hidden text-muted-foreground sm:inline">
-            ZA
+            {siteConfig.eyebrow}
           </span>
         </a>
 

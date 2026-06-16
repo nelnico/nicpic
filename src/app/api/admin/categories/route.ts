@@ -4,7 +4,7 @@ import { verifySession } from "@/lib/auth";
 
 export async function GET() {
   const categories = await prisma.category.findMany({
-    include: { locations: true },
+    include: { _count: { select: { photos: true } } },
     orderBy: { name: "asc" },
   });
   return NextResponse.json(categories);

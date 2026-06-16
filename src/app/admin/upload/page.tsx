@@ -22,8 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type Location = { id: string; name: string; categoryId: string };
-type Category = { id: string; name: string; locations: Location[] };
+type Category = { id: string; name: string };
+type Location = { id: string; name: string };
 
 async function getImageDimensions(
   file: File
@@ -39,7 +39,7 @@ export default function UploadPage() {
   const [locations, setLocations] = useState<Location[]>([]);
 
   const [categoryId, setCategoryId] = useState("");
-  const [locationId, setLocationId] = useState("");
+  const [locationId, setLocationId] = useState("none");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [takenAt, setTakenAt] = useState("");
@@ -53,26 +53,17 @@ export default function UploadPage() {
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
-  // Load categories on mount.
+  // Categories and locations are independent lists — load both on mount.
   useEffect(() => {
     fetch("/api/admin/categories")
       .then((r) => r.json())
-      .then(setCategories)
+      .then((d) => setCategories(Array.isArray(d) ? d : []))
       .catch(() => setCategories([]));
-  }, []);
-
-  // Load locations whenever the category changes.
-  useEffect(() => {
-    if (!categoryId) {
-      setLocations([]);
-      return;
-    }
-    setLocationId("");
-    fetch(`/api/admin/locations?categoryId=${categoryId}`)
+    fetch("/api/admin/locations")
       .then((r) => r.json())
-      .then(setLocations)
+      .then((d) => setLocations(Array.isArray(d) ? d : []))
       .catch(() => setLocations([]));
-  }, [categoryId]);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,8 +73,8 @@ export default function UploadPage() {
       setStatus("Please choose an image file.");
       return;
     }
-    if (!locationId) {
-      setStatus("Please choose a location.");
+    if (!categoryId) {
+      setStatus("Please choose a category.");
       return;
     }
 
@@ -125,7 +116,8 @@ export default function UploadPage() {
         body: JSON.stringify({
           title: title || null,
           description: description || null,
-          locationId,
+          categoryId,
+          locationId: locationId === "none" ? null : locationId,
           takenAt: takenAt || null,
           takenWhere: takenWhere || null,
           r2Key: key,
@@ -138,10 +130,10 @@ export default function UploadPage() {
       });
       if (!saveRes.ok) throw new Error("Failed to save photo.");
 
-      setStatus("Done! Photo uploaded successfully.");
+      setStatus("");
       setResultUrl(publicUrl);
 
-      // Reset the form (keep category/location for convenience).
+      // Reset the fields (keep category/location for quick repeat uploads).
       setTitle("");
       setDescription("");
       setTakenAt("");
@@ -195,27 +187,22 @@ export default function UploadPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Location</Label>
+              <Label>Location (optional)</Label>
               <Select
-                items={Object.fromEntries(
-                  locations.map((l) => [l.id, l.name] as const)
-                )}
+                items={{
+                  none: "No location",
+                  ...Object.fromEntries(
+                    locations.map((l) => [l.id, l.name] as const)
+                  ),
+                }}
                 value={locationId}
-                onValueChange={(v) => setLocationId(v ?? "")}
-                disabled={!categoryId || locations.length === 0}
+                onValueChange={(v) => setLocationId(v ?? "none")}
               >
                 <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      !categoryId
-                        ? "Pick a category first"
-                        : locations.length === 0
-                          ? "No locations in this category"
-                          : "Select a location"
-                    }
-                  />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">No location</SelectItem>
                   {locations.map((l) => (
                     <SelectItem key={l.id} value={l.id}>
                       {l.name}

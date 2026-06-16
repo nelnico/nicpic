@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { siteConfig } from "@/config/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -22,8 +23,8 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "nicpic — Photography",
-  description: "Photography portfolio.",
+  title: siteConfig.title,
+  description: siteConfig.description,
 };
 
 export default function RootLayout({

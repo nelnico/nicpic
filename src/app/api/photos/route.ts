@@ -11,18 +11,13 @@ export async function GET(request: NextRequest) {
   const photos = await prisma.photo.findMany({
     where: {
       ...(featuredOnly && { featured: true }),
-      ...(categorySlug && {
-        location: { category: { slug: categorySlug } },
-      }),
-      ...(locationSlug && {
-        location: { slug: locationSlug },
-      }),
-      ...(tag && {
-        tags: { some: { tag: { slug: tag } } },
-      }),
+      ...(categorySlug && { category: { slug: categorySlug } }),
+      ...(locationSlug && { location: { slug: locationSlug } }),
+      ...(tag && { tags: { some: { tag: { slug: tag } } } }),
     },
     include: {
-      location: { include: { category: true } },
+      category: true,
+      location: true,
       tags: { include: { tag: true } },
     },
     // Featured photos pinned to the top, then newest first.

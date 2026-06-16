@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { verifySession } from "@/lib/auth";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
@@ -25,6 +26,8 @@ export async function DELETE(
   return NextResponse.json({ ok: true });
 }
 
+// Partial update — handles both the simple featured toggle and full metadata edits.
+// Only fields present in the body are changed.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -35,6 +38,32 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const photo = await prisma.photo.update({ where: { id }, data: body });
+
+  const data: Prisma.PhotoUncheckedUpdateInput = {};
+  if ("title" in body) data.title = body.title || null;
+  if ("description" in body) data.description = body.description || null;
+  if ("categoryId" in body) data.categoryId = body.categoryId;
+  if ("locationId" in body) data.locationId = body.locationId || null;
+  if ("takenAt" in body) data.takenAt = body.takenAt ? new Date(body.takenAt) : null;
+  if ("takenWhere" in body) data.takenWhere = body.takenWhere || null;
+  if ("featured" in body) data.featured = body.featured;
+
+  // Replace tags only when an array is provided.
+  if (Array.isArray(body.tags)) {
+    const tagConnections = await Promise.all(
+      (body.tags as string[]).map(async (tagName) => {
+        const slug = tagName.toLowerCase().replace(/\s+/g, "-");
+        const tag = await prisma.tag.upsert({
+          where: { slug },
+          update: {},
+          create: { name: tagName, slug },
+        });
+        return { tagId: tag.id };
+      })
+    );
+    data.tags = { deleteMany: {}, create: tagConnections };
+  }
+
+  const photo = await prisma.photo.update({ where: { id }, data });
   return NextResponse.json(photo);
 }

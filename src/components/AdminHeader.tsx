@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { siteConfig } from "@/config/site";
 
 const links = [
   { href: "/admin/upload", label: "Upload" },
@@ -29,7 +30,8 @@ export function AdminHeader() {
           href="/admin"
           className="font-serif text-lg leading-none tracking-tight transition-opacity hover:opacity-70"
         >
-          nicpic <span className="eyebrow text-muted-foreground">admin</span>
+          {siteConfig.name}{" "}
+          <span className="eyebrow text-muted-foreground">admin</span>
         </Link>
         <nav className="flex items-center gap-4 text-sm sm:gap-6">
           {links.map((l) => (

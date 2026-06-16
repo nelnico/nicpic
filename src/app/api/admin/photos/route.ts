@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
   const {
     title,
     description,
+    categoryId,
     locationId,
     takenAt,
     takenWhere,
@@ -39,7 +40,8 @@ export async function POST(request: NextRequest) {
     data: {
       title,
       description,
-      locationId,
+      categoryId,
+      locationId: locationId || null,
       takenAt: takenAt ? new Date(takenAt) : null,
       takenWhere,
       r2Key,

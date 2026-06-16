@@ -7,21 +7,26 @@
 
 ## ⏸ Where we are right now (resume here)
 
-**Done:** App fully built (admin + public Lovable gallery) and **building green**. **Neon DB
-live** (migrated, verified). **Cloudflare R2 live** — bucket `nicpic`, public r2.dev URL,
-CORS for localhost; presign → upload → public-serve all verified by script. The app is now
-**fully functional** end to end.
+**Done:** App fully built (admin + public Lovable gallery), **building green**, **Neon DB +
+Cloudflare R2 live and verified**. **Data model was changed** (2026-06-16): Category and
+Location are now **independent** — a Photo has a **required category** + an **optional
+location** (a location can be reused across categories). Admin now supports **add + delete**
+for both. The DB was **reset to empty**.
 
-**▶ Next action: do a real photo upload in the browser**, then move to deployment (Phase 13, Vercel).
-1. Restart `npm run dev` (an old server cached the pre-DB/pre-R2 env — must restart).
-2. Go to `/admin/login` (password `your-admin-password`), then `/admin/upload`.
-3. Pick the Wildlife category → Kruger location, choose an image, upload.
-4. Confirm it shows on the homepage `/` gallery.
+**▶ MUST DO FIRST: restart `npm run dev`.** The schema changed and the Prisma client was
+regenerated, so a running dev server is stale.
+
+**Then:**
+1. `/admin/login` (password `your-admin-password`) → `/admin/categories`: create your
+   categories (e.g. People, Landscape, Wildlife) and any locations (e.g. Cape Town, Kruger).
+2. `/admin/upload`: pick a category (required), optionally a location, choose an image, upload.
+3. Confirm it shows on `/`.
+4. Then → deployment (Phase 13, Vercel).
 
 **Reminders:**
-- Admin password is currently `your-admin-password` (in `.env.local`) — change anytime.
-- DB seed data: Category *Wildlife* + Location *Kruger National Park*.
-- R2 CORS currently allows only localhost; add the production origin before/after deploying.
+- Admin password is `your-admin-password` (in `.env.local`) — change anytime.
+- Schema was applied via `prisma db push` (not a tracked migration) — see migration note below.
+- R2 CORS currently allows only localhost; add the production origin when deploying.
 
 ---
 
@@ -118,8 +123,18 @@ The doc predates these tool versions. These changes were required:
 4. **shadcn `base-nova` runs on Base UI.** `Select.onValueChange` gives `string | null`, so handlers coerce with `(v) => setX(v ?? "")`.
 5. **`next.config.ts`** derives the R2 image hostname from `R2_PUBLIC_URL` instead of hardcoding. `reactCompiler: true` (enabled by scaffold) kept.
 6. **`postinstall: prisma generate`** added for Vercel.
+7. **Data model decoupled (2026-06-16):** Category & Location are independent; `Photo.categoryId` required, `Photo.locationId` optional (`onDelete: SetNull`). Applied with **`prisma db push --accept-data-loss`**, NOT `prisma migrate` (migrate is interactive and this shell is non-interactive). ⚠️ **Migration drift:** `prisma/migrations/` still only has the old `init`; the live DB is ahead of it. Deploy is unaffected (same shared Neon DB; build doesn't run migrations). **Before any future `prisma migrate dev`, baseline the migrations** (data is disposable, so a reset is fine) or it'll complain about drift.
 
 ---
+
+## Branding / cloning
+
+All site branding is centralised in **`src/config/site.ts`** (`siteConfig`: `name`,
+`eyebrow`, `title`, `description`), consumed by `layout.tsx` (metadata), `Nav.tsx`, and
+`AdminHeader.tsx`. To rebrand: edit that file, **or** set `NEXT_PUBLIC_SITE_*` env vars
+(commented examples in `.env.local`) for a no-code, per-deployment override when cloning.
+These are build-time inlined → restart `npm run dev` / redeploy after changing them.
+Future option for non-technical owners: a DB settings table + admin Settings page.
 
 ## Accounts
 

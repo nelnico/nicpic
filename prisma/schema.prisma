@@ -7,40 +7,38 @@ datasource db {
 }
 
 model Category {
-  id        String     @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  slug      String     @unique
-  locations Location[]
-  createdAt DateTime   @default(now())
+  slug      String   @unique
+  photos    Photo[]
+  createdAt DateTime @default(now())
 }
 
 model Location {
-  id         String    @id @default(cuid())
-  name       String
-  slug       String
-  categoryId String
-  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  photos     Photo[]
-  createdAt  DateTime  @default(now())
-
-  @@unique([categoryId, slug])
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  photos    Photo[]
+  createdAt DateTime @default(now())
 }
 
 model Photo {
-  id          String      @id @default(cuid())
+  id          String     @id @default(cuid())
   title       String?
   description String?
-  locationId  String
-  location    Location    @relation(fields: [locationId], references: [id])
+  categoryId  String
+  category    Category   @relation(fields: [categoryId], references: [id])
+  locationId  String?
+  location    Location?  @relation(fields: [locationId], references: [id], onDelete: SetNull)
   takenAt     DateTime?
-  takenWhere  String?     // freetext e.g. "Near Lower Sabie Rest Camp"
-  r2Key       String      @unique
+  takenWhere  String?    // freetext e.g. "Near Lower Sabie Rest Camp"
+  r2Key       String     @unique
   r2Url       String
   width       Int
   height      Int
-  featured    Boolean     @default(false)
+  featured    Boolean    @default(false)
   tags        PhotoTag[]
-  createdAt   DateTime    @default(now())
+  createdAt   DateTime   @default(now())
 }
 
 model Tag {

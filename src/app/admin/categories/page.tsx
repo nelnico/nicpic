@@ -11,64 +11,61 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-type Location = { id: string; name: string };
-type Category = { id: string; name: string; locations: Location[] };
+type Item = { id: string; name: string; _count: { photos: number } };
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Item[]>([]);
+  const [locations, setLocations] = useState<Item[]>([]);
   const [newCategory, setNewCategory] = useState("");
   const [newLocation, setNewLocation] = useState("");
-  const [locationCategoryId, setLocationCategoryId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   async function load() {
-    const data = await fetch("/api/admin/categories").then((r) => r.json());
-    setCategories(Array.isArray(data) ? data : []);
+    const [c, l] = await Promise.all([
+      fetch("/api/admin/categories").then((r) => r.json()),
+      fetch("/api/admin/locations").then((r) => r.json()),
+    ]);
+    setCategories(Array.isArray(c) ? c : []);
+    setLocations(Array.isArray(l) ? l : []);
   }
 
   useEffect(() => {
-    load().catch(() => setCategories([]));
+    load().catch(() => setError("Could not load data."));
   }, []);
 
-  async function addCategory(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newCategory.trim()) return;
+  async function add(kind: "categories" | "locations", name: string) {
+    if (!name.trim()) return;
     setBusy(true);
+    setError("");
     try {
-      await fetch("/api/admin/categories", {
+      await fetch(`/api/admin/${kind}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newCategory.trim() }),
+        body: JSON.stringify({ name: name.trim() }),
       });
-      setNewCategory("");
+      if (kind === "categories") setNewCategory("");
+      else setNewLocation("");
       await load();
     } finally {
       setBusy(false);
     }
   }
 
-  async function addLocation(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newLocation.trim() || !locationCategoryId) return;
+  async function remove(kind: "categories" | "locations", item: Item) {
+    if (!confirm(`Delete "${item.name}"?`)) return;
     setBusy(true);
+    setError("");
     try {
-      await fetch("/api/admin/locations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newLocation.trim(),
-          categoryId: locationCategoryId,
-        }),
+      const res = await fetch(`/api/admin/${kind}/${item.id}`, {
+        method: "DELETE",
       });
-      setNewLocation("");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Could not delete.");
+        return;
+      }
       await load();
     } finally {
       setBusy(false);
@@ -84,94 +81,117 @@ export default function CategoriesPage() {
         </Link>
       </div>
 
+      <p className="mb-6 text-sm text-muted-foreground">
+        Categories and locations are independent — a photo always has a category,
+        and can optionally have a location. The same location can be used across
+        any category.
+      </p>
+
+      {error && (
+        <p className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive-foreground">
+          {error}
+        </p>
+      )}
+
       <div className="grid gap-6 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Add category</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={addCategory} className="space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="category">Name</Label>
-                <Input
-                  id="category"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  placeholder="e.g. Wildlife"
-                />
-              </div>
-              <Button type="submit" disabled={busy}>
-                Add category
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Add location</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={addLocation} className="space-y-3">
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <Select
-                  items={Object.fromEntries(
-                    categories.map((c) => [c.id, c.name] as const)
-                  )}
-                  value={locationCategoryId}
-                  onValueChange={(v) => setLocationCategoryId(v ?? "")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="location">Name</Label>
-                <Input
-                  id="location"
-                  value={newLocation}
-                  onChange={(e) => setNewLocation(e.target.value)}
-                  placeholder="e.g. Kruger National Park"
-                />
-              </div>
-              <Button type="submit" disabled={busy || !locationCategoryId}>
-                Add location
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-8">
-        <h2 className="mb-3 text-lg font-medium">Existing</h2>
-        {categories.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No categories yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {categories.map((c) => (
-              <Card key={c.id}>
-                <CardContent className="pt-6">
-                  <div className="font-medium">{c.name}</div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    {c.locations.length === 0
-                      ? "No locations"
-                      : c.locations.map((l) => l.name).join(", ")}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+        <ManageList
+          title="Categories"
+          placeholder="e.g. People"
+          items={categories}
+          value={newCategory}
+          onValue={setNewCategory}
+          onAdd={() => add("categories", newCategory)}
+          onRemove={(item) => remove("categories", item)}
+          busy={busy}
+        />
+        <ManageList
+          title="Locations"
+          placeholder="e.g. Cape Town"
+          items={locations}
+          value={newLocation}
+          onValue={setNewLocation}
+          onAdd={() => add("locations", newLocation)}
+          onRemove={(item) => remove("locations", item)}
+          busy={busy}
+        />
       </div>
     </div>
+  );
+}
+
+function ManageList({
+  title,
+  placeholder,
+  items,
+  value,
+  onValue,
+  onAdd,
+  onRemove,
+  busy,
+}: {
+  title: string;
+  placeholder: string;
+  items: Item[];
+  value: string;
+  onValue: (v: string) => void;
+  onAdd: () => void;
+  onRemove: (item: Item) => void;
+  busy: boolean;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onAdd();
+          }}
+          className="space-y-2"
+        >
+          <Label className="sr-only">Add {title}</Label>
+          <div className="flex gap-2">
+            <Input
+              value={value}
+              onChange={(e) => onValue(e.target.value)}
+              placeholder={placeholder}
+            />
+            <Button type="submit" disabled={busy}>
+              Add
+            </Button>
+          </div>
+        </form>
+
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">None yet.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {items.map((item) => (
+              <li
+                key={item.id}
+                className="flex items-center justify-between py-2"
+              >
+                <span className="text-sm">
+                  {item.name}{" "}
+                  <span className="text-muted-foreground">
+                    ({item._count.photos})
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onRemove(item)}
+                  className="text-xs text-muted-foreground transition-colors hover:text-destructive disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }

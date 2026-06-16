@@ -12,7 +12,8 @@ type Photo = {
   featured: boolean;
   takenAt: string | null;
   createdAt: string;
-  location: { name: string; category: { name: string } };
+  category: { name: string };
+  location: { name: string } | null;
 };
 
 export default function ManagePhotosPage() {
@@ -107,8 +108,8 @@ export default function ManagePhotosPage() {
                     />
                   </td>
                   <td className="p-3">{photo.title || "—"}</td>
-                  <td className="p-3">{photo.location.category.name}</td>
-                  <td className="p-3">{photo.location.name}</td>
+                  <td className="p-3">{photo.category.name}</td>
+                  <td className="p-3">{photo.location?.name ?? "—"}</td>
                   <td className="p-3">
                     {photo.takenAt
                       ? new Date(photo.takenAt).toLocaleDateString()
@@ -122,14 +123,22 @@ export default function ManagePhotosPage() {
                     />
                   </td>
                   <td className="p-3 text-right">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={busyId === photo.id}
-                      onClick={() => deletePhoto(photo.id)}
-                    >
-                      Delete
-                    </Button>
+                    <div className="flex items-center justify-end gap-3">
+                      <Link
+                        href={`/admin/photos/${photo.id}/edit`}
+                        className="text-xs text-muted-foreground underline transition-colors hover:text-foreground"
+                      >
+                        Edit
+                      </Link>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={busyId === photo.id}
+                        onClick={() => deletePhoto(photo.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

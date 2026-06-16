@@ -15,7 +15,8 @@ async function getGalleryData(): Promise<{
   try {
     const rows = await prisma.photo.findMany({
       include: {
-        location: { include: { category: true } },
+        category: true,
+        location: true,
         tags: { include: { tag: true } },
       },
       // Featured photos pinned to the top, then newest first.
@@ -28,8 +29,8 @@ async function getGalleryData(): Promise<{
       width: p.width,
       height: p.height,
       title: p.title ?? "Untitled",
-      category: p.location.category.name,
-      location: p.takenWhere ?? p.location.name,
+      category: p.category.name,
+      location: p.takenWhere ?? p.location?.name ?? "",
       date: p.takenAt ? formatMonthYear(p.takenAt) : "",
       tags: p.tags.map((t) => t.tag.name),
     }));
