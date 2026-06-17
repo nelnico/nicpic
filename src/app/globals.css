@@ -102,6 +102,7 @@
     @apply font-sans;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    scrollbar-gutter: stable both-edges;
   }
   ::selection {
     background-color: var(--foreground);

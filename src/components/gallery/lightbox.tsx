@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useRef, useState } from "react";
 import { X, ArrowLeft, ArrowRight, Info } from "lucide-react";
-import type { Photo } from "@/data/photos";
+import type { Photo } from "@/types/photo";
 
 interface LightboxProps {
   photos: Photo[];

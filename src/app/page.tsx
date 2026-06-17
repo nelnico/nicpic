@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { Gallery } from "@/components/gallery";
-import type { Photo } from "@/data/photos";
+import { Gallery } from "@/components/gallery/gallery";
+import type { Photo } from "@/types/photo";
 
 export const dynamic = "force-dynamic";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,12 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-black">
       <div className="w-full max-w-sm space-y-6 p-8 bg-zinc-900 rounded-xl border border-zinc-800">
-        <h1 className="text-xl font-semibold text-white">Admin Login</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-white">Admin Login</h1>
+          <Link href="/" className="text-sm text-zinc-500 transition-colors hover:text-zinc-300">
+            ← Back to site
+          </Link>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="password" className="text-zinc-400">Password</Label>

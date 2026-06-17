@@ -27,13 +27,23 @@ export function AdminHeader() {
         >
           {siteConfig.name}
         </Link>
-        <button
-          type="button"
-          onClick={logout}
-          className="cursor-pointer border-none bg-transparent text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Log out
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            View site ↗
+          </Link>
+          <button
+            type="button"
+            onClick={logout}
+            className="cursor-pointer border-none bg-transparent text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Log out
+          </button>
+        </div>
       </div>
     </header>
   );

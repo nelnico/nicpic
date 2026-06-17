@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import { siteConfig } from "@/config/site";
-import { ContentGuard } from "@/components/content-guard";
+import { ContentGuard } from "@/components/gallery/content-guard";
 import "./globals.css";
 
 const inter = Inter({

@@ -1,4 +1,4 @@
-import type { Photo } from "@/data/photos";
+import type { Photo } from "@/types/photo";
 
 interface PhotoCardProps {
   photo: Photo;

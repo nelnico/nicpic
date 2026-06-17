@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AdvancedPhotoFields } from "@/components/advanced-photo-fields";
+import { AdvancedPhotoFields } from "@/components/admin/advanced-photo-fields";
 
 type Opt = { id: string; name: string };
 

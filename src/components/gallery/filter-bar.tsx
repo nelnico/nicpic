@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { Category } from "@/data/photos";
+import type { Category } from "@/types/photo";
 
 interface FilterBarProps {
   categories: Category[];
