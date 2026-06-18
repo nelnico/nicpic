@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
-import { X, ArrowLeft, ArrowRight, Info } from "lucide-react";
+import { X, ArrowLeft, ArrowRight, Info, ChevronUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Photo } from "@/types/photo";
 
 interface LightboxProps {
@@ -18,6 +19,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const startX = useRef(0);
   const pointerId = useRef<number | null>(null);
 
@@ -48,9 +50,12 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
     };
   }, [handleKey]);
 
-  // Close the details panel when navigating between photos.
+  // Reset panel state on navigation, then auto-collapse after 2.6 s.
   useEffect(() => {
     setInfoOpen(false);
+    setExpanded(true);
+    const t = setTimeout(() => setExpanded(false), 2600);
+    return () => clearTimeout(t);
   }, [index]);
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -77,7 +82,6 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
 
   const translate = `calc(${-index * 100}% + ${dragX}px)`;
 
-  // Optional gear / settings shown in the info dropdown.
   const settings = (
     [
       ["Camera", photo.camera],
@@ -94,7 +98,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   return (
     <div className="fade-in fixed inset-0 z-50 flex flex-col bg-background">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-5 md:px-10">
+      <div className="flex items-center justify-between px-6 py-5 md:px-10 [@media(max-height:500px)]:py-1.5">
         <span className="eyebrow text-muted-foreground">
           {String(index + 1).padStart(2, "0")} / {photo.category}
         </span>
@@ -109,8 +113,15 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         </button>
       </div>
 
-      {/* Stage */}
-      <div className="relative flex min-h-0 flex-1 items-center px-4 md:px-16">
+      {/* Stage — pb-16 reserves space so the collapsed details bar never
+           covers the bottom of the image. */}
+      <div
+        className="relative flex min-h-0 flex-1 items-center px-4 pb-16 md:px-16"
+        style={{
+          maxHeight: `calc(100vw * ${photo.height / photo.width})`,
+          transition: "max-height 350ms cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+      >
         <button
           type="button"
           onClick={() => go(-1)}
@@ -163,90 +174,123 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         >
           <ArrowRight className="h-6 w-6" strokeWidth={1.25} />
         </button>
-      </div>
 
-      {/* Metadata */}
-      <div className="relative border-t border-border px-6 py-6 md:px-10 md:py-8">
-        {hasSettings && (
-          <div className="absolute right-6 top-6 md:right-10">
-            <button
-              type="button"
-              onClick={() => setInfoOpen((o) => !o)}
-              aria-label="Photo details"
-              aria-expanded={infoOpen}
-              className={`transition-colors hover:text-foreground ${
-                infoOpen ? "text-foreground" : "text-muted-foreground"
-              }`}
-            >
-              <Info className="h-5 w-5" strokeWidth={1.5} />
-            </button>
-            {infoOpen && (
-              <div className="absolute right-0 bottom-full mb-3 w-max rounded-md border border-border bg-popover p-4 text-popover-foreground shadow-md">
-                {photo.description && (
-                  <div className="mb-3">
-                    <p className="text-sm font-semibold">{photo.title}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{photo.description}</p>
-                    {settings.length > 0 && <hr className="mt-3 border-border" />}
+        {/* Details panel — overlays the photo; toggles between thin bar and full info */}
+        <div className="absolute inset-x-0 bottom-0 z-10 border-t border-border bg-background/85 backdrop-blur-md">
+          {/* Always-visible bar */}
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            aria-expanded={expanded}
+            aria-label={expanded ? "Hide details" : "Show details"}
+            className="flex w-full items-center gap-4 px-6 py-4 text-left md:px-10"
+          >
+            <span className="eyebrow shrink-0 text-muted-foreground">{photo.category}</span>
+            <span className="min-w-0 flex-1 truncate font-serif text-lg leading-none md:text-xl">
+              {photo.title}
+            </span>
+            <ChevronUp
+              className={cn(
+                "h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300",
+                expanded ? "rotate-180" : "rotate-0",
+              )}
+              strokeWidth={1.5}
+            />
+          </button>
+
+          {/* Expandable details */}
+          <div
+            className={cn(
+              "grid transition-[grid-template-rows] duration-300 ease-out",
+              expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+            )}
+          >
+            <div className="overflow-hidden">
+              <div className="relative px-6 pb-7 md:px-10 md:pb-8">
+                {hasSettings && (
+                  <div className="absolute right-6 top-0 md:right-10">
+                    <button
+                      type="button"
+                      onClick={() => setInfoOpen((o) => !o)}
+                      aria-label="Photo details"
+                      aria-expanded={infoOpen}
+                      className={`transition-colors hover:text-foreground ${
+                        infoOpen ? "text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      <Info className="h-5 w-5" strokeWidth={1.5} />
+                    </button>
+                    {infoOpen && (
+                      <div className="absolute right-0 bottom-full mb-3 w-max rounded-md border border-border bg-popover p-4 text-popover-foreground shadow-md">
+                        {photo.description && (
+                          <div className="mb-3">
+                            <p className="text-sm font-semibold">{photo.title}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{photo.description}</p>
+                            {settings.length > 0 && <hr className="mt-3 border-border" />}
+                          </div>
+                        )}
+                        {settings.length > 0 && (
+                          <dl className="space-y-2.5">
+                            {settings.map((s) => (
+                              <div
+                                key={s.label}
+                                className="flex items-baseline justify-between gap-8"
+                              >
+                                <dt className="eyebrow text-muted-foreground">{s.label}</dt>
+                                <dd className="whitespace-nowrap text-sm">{s.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
-                {settings.length > 0 && (
-                  <dl className="space-y-2.5">
-                    {settings.map((s) => (
-                      <div
-                        key={s.label}
-                        className="flex items-baseline justify-between gap-8"
-                      >
-                        <dt className="eyebrow text-muted-foreground">{s.label}</dt>
-                        <dd className="whitespace-nowrap text-sm">{s.value}</dd>
+
+                <div className="mx-auto flex max-w-[1600px] flex-col gap-6 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="eyebrow text-muted-foreground">
+                      {photo.category}
+                      {photo.location ? ` — ${photo.location}` : ""}
+                    </p>
+                    <h2 className="mt-2 font-serif text-4xl leading-none md:text-5xl">
+                      {photo.title}
+                    </h2>
+                  </div>
+
+                  <dl className="grid grid-cols-2 gap-x-12 gap-y-4 sm:flex sm:flex-wrap sm:items-end sm:gap-x-14">
+                    {photo.where && (
+                      <div>
+                        <dt className="eyebrow text-muted-foreground">Where</dt>
+                        <dd className="mt-1.5 text-sm">{photo.where}</dd>
                       </div>
-                    ))}
+                    )}
+                    {photo.date && (
+                      <div>
+                        <dt className="eyebrow text-muted-foreground">Date</dt>
+                        <dd className="mt-1.5 text-sm">{photo.date}</dd>
+                      </div>
+                    )}
+                    {photo.tags.length > 0 && (
+                      <div className="col-span-2 sm:col-auto">
+                        <dt className="eyebrow text-muted-foreground">Tags</dt>
+                        <dd className="mt-1.5 flex flex-wrap gap-2">
+                          {photo.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="border border-border px-2.5 py-1 text-xs text-muted-foreground"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </dd>
+                      </div>
+                    )}
                   </dl>
-                )}
+                </div>
               </div>
-            )}
+            </div>
           </div>
-        )}
-
-        <div className="mx-auto flex max-w-[1600px] flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div className="pr-10">
-            <p className="eyebrow text-muted-foreground">
-              {photo.category}
-              {photo.location ? ` — ${photo.location}` : ""}
-            </p>
-            <h2 className="mt-2 font-serif text-4xl leading-none md:text-5xl">
-              {photo.title}
-            </h2>
-          </div>
-
-          <dl className="grid grid-cols-2 gap-x-12 gap-y-4 sm:flex sm:flex-wrap sm:items-end sm:gap-x-14">
-            {photo.where && (
-              <div>
-                <dt className="eyebrow text-muted-foreground">Where</dt>
-                <dd className="mt-1.5 text-sm">{photo.where}</dd>
-              </div>
-            )}
-            {photo.date && (
-              <div>
-                <dt className="eyebrow text-muted-foreground">Date</dt>
-                <dd className="mt-1.5 text-sm">{photo.date}</dd>
-              </div>
-            )}
-            {photo.tags.length > 0 && (
-              <div className="col-span-2 sm:col-auto">
-                <dt className="eyebrow text-muted-foreground">Tags</dt>
-                <dd className="mt-1.5 flex flex-wrap gap-2">
-                  {photo.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="border border-border px-2.5 py-1 text-xs text-muted-foreground"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </dd>
-              </div>
-            )}
-          </dl>
         </div>
       </div>
     </div>
