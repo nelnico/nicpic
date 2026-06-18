@@ -96,6 +96,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   const hasSettings = settings.length > 0 || Boolean(photo.description);
 
   return (
+    // This fixed wrapper is the positioning parent for the details overlay.
     <div className="fade-in fixed inset-0 z-50 flex flex-col bg-background">
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-5 md:px-10 [@media(max-height:500px)]:py-1.5">
@@ -113,7 +114,9 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         </button>
       </div>
 
-      {/* Stage — pb-16 reserves space so the collapsed bar never covers the image bottom. */}
+      {/* Stage — maxHeight caps to the photo's aspect-ratio height, eliminating dead
+           zones above/below landscape images on portrait phones. pb-16 ensures the
+           image never extends behind the collapsed details bar for tall portrait images. */}
       <div
         className="relative flex min-h-0 flex-1 items-center px-4 pb-16"
         style={{
@@ -173,13 +176,15 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         >
           <ArrowRight className="h-6 w-6" strokeWidth={1.25} />
         </button>
+      </div>
 
-        {/* Details panel — floating overlay; toggles between a thin bar and full info */}
-        <div className="absolute inset-x-0 bottom-0 z-20">
-          {/* Scrim so the bar reads cleanly over any photo edge */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[-2.5rem] bg-gradient-to-t from-background via-background/85 to-transparent" />
+      {/* Details panel — absolute within the fixed viewport wrapper so it always
+           anchors to the viewport bottom, independent of the stage height. */}
+      <div className="absolute inset-x-0 bottom-0 z-20">
+        {/* Scrim fades the background into the panel */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[-2.5rem] bg-gradient-to-t from-background via-background/85 to-transparent" />
 
-          <div className="relative border-t border-border/60 bg-background/70 backdrop-blur-md">
+        <div className="relative border-t border-border/60 bg-background/70 backdrop-blur-md">
           {/* Always-visible bar */}
           <button
             type="button"
@@ -293,7 +298,6 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
                 </div>
               </div>
             </div>
-          </div>
           </div>
         </div>
       </div>
