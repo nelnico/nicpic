@@ -113,10 +113,9 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         </button>
       </div>
 
-      {/* Stage — pb-16 reserves space so the collapsed details bar never
-           covers the bottom of the image. */}
+      {/* Stage */}
       <div
-        className="relative flex min-h-0 flex-1 items-center px-4 pb-16 md:px-16"
+        className="relative flex min-h-0 flex-1 items-center px-4"
         style={{
           maxHeight: `calc(100vw * ${photo.height / photo.width})`,
           transition: "max-height 350ms cubic-bezier(0.22, 1, 0.36, 1)",
@@ -150,7 +149,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
             {photos.map((p) => (
               <div
                 key={p.id}
-                className="flex h-full w-full shrink-0 items-center justify-center"
+                className="flex h-full w-full shrink-0 items-center justify-center px-4 pb-20 pt-16 md:px-20 md:pb-24 md:pt-20"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -175,8 +174,12 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
           <ArrowRight className="h-6 w-6" strokeWidth={1.25} />
         </button>
 
-        {/* Details panel — overlays the photo; toggles between thin bar and full info */}
-        <div className="absolute inset-x-0 bottom-0 z-10 border-t border-border bg-background/85 backdrop-blur-md">
+        {/* Details panel — floating overlay; toggles between a thin bar and full info */}
+        <div className="absolute inset-x-0 bottom-0 z-20">
+          {/* Scrim so the bar reads cleanly over any photo edge */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[-2.5rem] bg-gradient-to-t from-background via-background/85 to-transparent" />
+
+          <div className="relative border-t border-border/60 bg-background/70 backdrop-blur-md">
           {/* Always-visible bar */}
           <button
             type="button"
@@ -253,7 +256,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
                       {photo.category}
                       {photo.location ? ` — ${photo.location}` : ""}
                     </p>
-                    <h2 className="mt-2 font-serif text-4xl leading-none md:text-5xl">
+                    <h2 className="mt-2 font-serif text-3xl leading-none md:text-5xl">
                       {photo.title}
                     </h2>
                   </div>
@@ -290,6 +293,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>
