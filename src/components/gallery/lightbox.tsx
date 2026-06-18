@@ -118,7 +118,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
            zones above/below landscape images on portrait phones. pb-16 ensures the
            image never extends behind the collapsed details bar for tall portrait images. */}
       <div
-        className="relative flex min-h-0 flex-1 items-center px-4 pb-16"
+        className="relative flex min-h-0 flex-1 items-center pb-16 md:px-16"
         style={{
           maxHeight: `calc(100vw * ${photo.height / photo.width})`,
           transition: "max-height 350ms cubic-bezier(0.22, 1, 0.36, 1)",
