@@ -113,9 +113,9 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         </button>
       </div>
 
-      {/* Stage */}
+      {/* Stage — pb-16 reserves space so the collapsed bar never covers the image bottom. */}
       <div
-        className="relative flex min-h-0 flex-1 items-center px-4"
+        className="relative flex min-h-0 flex-1 items-center px-4 pb-16"
         style={{
           maxHeight: `calc(100vw * ${photo.height / photo.width})`,
           transition: "max-height 350ms cubic-bezier(0.22, 1, 0.36, 1)",
@@ -149,7 +149,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
             {photos.map((p) => (
               <div
                 key={p.id}
-                className="flex h-full w-full shrink-0 items-center justify-center px-4 pb-20 pt-16 md:px-20 md:pb-24 md:pt-20"
+                className="flex h-full w-full shrink-0 items-center justify-center"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
