@@ -17,8 +17,6 @@ async function getGalleryData(): Promise<{
       include: {
         category: true,
         location: true,
-        camera: true,
-        lens: true,
         tags: { include: { tag: true } },
       },
       // Featured photos pinned to the top, then newest first.
@@ -37,8 +35,6 @@ async function getGalleryData(): Promise<{
       where: p.takenWhere ?? "",
       date: p.takenAt ? formatMonthYear(p.takenAt) : "",
       tags: p.tags.map((t) => t.tag.name),
-      camera: p.camera?.name ?? "",
-      lens: p.lens?.name ?? "",
       cameraMake: p.cameraMake ?? "",
       cameraModel: p.cameraModel ?? "",
       iso: p.iso ?? "",

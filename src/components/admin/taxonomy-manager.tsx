@@ -28,7 +28,7 @@ export function TaxonomyManager({
 }: {
   title: string;
   noun: string;
-  kind: "categories" | "locations" | "cameras" | "lenses";
+  kind: "categories" | "locations";
   placeholder: string;
 }) {
   const [items, setItems] = useState<Item[]>([]);

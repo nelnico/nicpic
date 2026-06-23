@@ -18,9 +18,6 @@ export interface Photo {
   tags: string[];
   /** Optional description ("" when none). */
   description: string;
-  // Camera gear (FK taxonomy, "" when not set).
-  camera: string;
-  lens: string;
   // EXIF fields ("" when not set).
   cameraMake: string;
   cameraModel: string;

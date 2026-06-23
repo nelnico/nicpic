@@ -44,8 +44,6 @@ export async function PATCH(
   if ("description" in body) data.description = body.description || null;
   if ("categoryId" in body) data.categoryId = body.categoryId;
   if ("locationId" in body) data.locationId = body.locationId || null;
-  if ("cameraId" in body) data.cameraId = body.cameraId || null;
-  if ("lensId" in body) data.lensId = body.lensId || null;
   if ("cameraMake" in body) data.cameraMake = body.cameraMake || null;
   if ("cameraModel" in body) data.cameraModel = body.cameraModel || null;
   if ("iso" in body) data.iso = body.iso || null;

@@ -23,18 +23,6 @@ export default function AdminHomePage() {
             kind="locations"
             placeholder="e.g. Cape Town"
           />
-          <TaxonomyManager
-            title="Cameras"
-            noun="camera"
-            kind="cameras"
-            placeholder="e.g. Sony A7 IV"
-          />
-          <TaxonomyManager
-            title="Lenses"
-            noun="lens"
-            kind="lenses"
-            placeholder="e.g. 24-70mm f/2.8"
-          />
         </div>
       </div>
     </div>
