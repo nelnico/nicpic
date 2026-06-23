@@ -42,6 +42,14 @@ async function getGalleryData(): Promise<{
       iso: p.iso ?? "",
       aperture: p.aperture ?? "",
       shutterSpeed: p.shutterSpeed ?? "",
+      focalLength: p.focalLength ?? "",
+      focalLength35mm: p.focalLength35mm ?? "",
+      exposureMode: p.exposureMode ?? "",
+      meteringMode: p.meteringMode ?? "",
+      flash: p.flash ?? "",
+      gpsLat: p.gpsLat ?? null,
+      gpsLng: p.gpsLng ?? null,
+      gpsAlt: p.gpsAlt ?? null,
     }));
 
     const categories = [...new Set(photos.map((p) => p.category))].sort();

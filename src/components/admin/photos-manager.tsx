@@ -22,11 +22,6 @@ type ApiPhoto = {
   featured: boolean;
   categoryId: string;
   locationId: string | null;
-  cameraId: string | null;
-  lensId: string | null;
-  iso: string | null;
-  aperture: string | null;
-  shutterSpeed: string | null;
   takenAt: string | null;
   takenWhere: string | null;
   tags: { tag: { name: string } }[];
@@ -39,11 +34,6 @@ function toEditable(p: ApiPhoto): EditablePhoto {
     description: p.description ?? "",
     categoryId: p.categoryId,
     locationId: p.locationId ?? "none",
-    cameraId: p.cameraId ?? "none",
-    lensId: p.lensId ?? "none",
-    iso: p.iso ?? "none",
-    aperture: p.aperture ?? "none",
-    shutterSpeed: p.shutterSpeed ?? "none",
     takenAt: p.takenAt ? p.takenAt.slice(0, 10) : "",
     takenWhere: p.takenWhere ?? "",
     featured: p.featured,
@@ -56,8 +46,6 @@ export function PhotosManager() {
   const [photos, setPhotos] = useState<ApiPhoto[]>([]);
   const [categories, setCategories] = useState<Opt[]>([]);
   const [locations, setLocations] = useState<Opt[]>([]);
-  const [cameras, setCameras] = useState<Opt[]>([]);
-  const [lenses, setLenses] = useState<Opt[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EditablePhoto | null>(null);
@@ -77,8 +65,6 @@ export function PhotosManager() {
         .catch(() => set([]));
     get("categories", setCategories);
     get("locations", setLocations);
-    get("cameras", setCameras);
-    get("lenses", setLenses);
     loadPhotos()
       .catch(() => setPhotos([]))
       .finally(() => setLoading(false));
@@ -175,8 +161,6 @@ export function PhotosManager() {
         photo={editing}
         categories={categories}
         locations={locations}
-        cameras={cameras}
-        lenses={lenses}
         onSaved={loadPhotos}
       />
     </Card>

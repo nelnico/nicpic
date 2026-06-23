@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import exifr from "exifr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AdvancedPhotoFields } from "@/components/admin/advanced-photo-fields";
 
 type Opt = { id: string; name: string };
 
@@ -29,11 +29,6 @@ export type EditablePhoto = {
   description: string;
   categoryId: string;
   locationId: string;
-  cameraId: string;
-  lensId: string;
-  iso: string;
-  aperture: string;
-  shutterSpeed: string;
   takenAt: string;
   takenWhere: string;
   featured: boolean;
@@ -48,23 +43,72 @@ async function getImageDimensions(file: File) {
   return dims;
 }
 
+type ExifData = {
+  iso?: string;
+  aperture?: string;
+  shutterSpeed?: string;
+  focalLength?: string;
+  focalLength35mm?: string;
+  exposureMode?: string;
+  meteringMode?: string;
+  flash?: string;
+  gpsLat?: number;
+  gpsLng?: number;
+  gpsAlt?: number;
+  takenAt?: string;
+};
+
+function formatShutterSpeed(t: number): string {
+  if (t >= 1) return `${t}s`;
+  return `1/${Math.round(1 / t)}`;
+}
+
+async function extractExif(file: File): Promise<ExifData> {
+  try {
+    const raw = await exifr.parse(file, {
+      tiff: true,
+      exif: true,
+      gps: true,
+      translateValues: true,
+      reviveValues: true,
+    });
+    if (!raw) return {};
+
+    const out: ExifData = {};
+    if (raw.ISO) out.iso = String(raw.ISO);
+    if (raw.FNumber) out.aperture = `f/${raw.FNumber}`;
+    if (raw.ExposureTime) out.shutterSpeed = formatShutterSpeed(raw.ExposureTime);
+    if (raw.FocalLength) out.focalLength = `${raw.FocalLength}mm`;
+    if (raw.FocalLengthIn35mmFilm) out.focalLength35mm = `${raw.FocalLengthIn35mmFilm}mm`;
+    if (raw.ExposureMode != null) out.exposureMode = String(raw.ExposureMode);
+    if (raw.MeteringMode != null) out.meteringMode = String(raw.MeteringMode);
+    if (raw.Flash != null) out.flash = String(raw.Flash);
+    if (raw.latitude != null) out.gpsLat = raw.latitude;
+    if (raw.longitude != null) out.gpsLng = raw.longitude;
+    if (raw.GPSAltitude != null) out.gpsAlt = raw.GPSAltitude;
+    if (raw.DateTimeOriginal instanceof Date) {
+      const d = raw.DateTimeOriginal;
+      out.takenAt = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 export function PhotoDialog({
   open,
   onOpenChange,
   photo,
   categories,
   locations,
-  cameras,
-  lenses,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  photo: EditablePhoto | null; // null = create mode
+  photo: EditablePhoto | null;
   categories: Opt[];
   locations: Opt[];
-  cameras: Opt[];
-  lenses: Opt[];
   onSaved: () => void;
 }) {
   const isEdit = photo !== null;
@@ -77,20 +121,9 @@ export function PhotoDialog({
   const [takenWhere, setTakenWhere] = useState(photo?.takenWhere ?? "");
   const [tags, setTags] = useState(photo?.tags.join(", ") ?? "");
   const [featured, setFeatured] = useState(photo?.featured ?? false);
-  const [cameraId, setCameraId] = useState(photo?.cameraId ?? "none");
-  const [lensId, setLensId] = useState(photo?.lensId ?? "none");
-  const [iso, setIso] = useState(photo?.iso ?? "none");
-  const [aperture, setAperture] = useState(photo?.aperture ?? "none");
-  const [shutterSpeed, setShutterSpeed] = useState(photo?.shutterSpeed ?? "none");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
-
-  const advancedOpen = isEdit
-    ? [photo!.cameraId, photo!.lensId, photo!.iso, photo!.aperture, photo!.shutterSpeed].some(
-        (v) => v && v !== "none"
-      )
-    : false;
 
   function metaBody() {
     return {
@@ -98,11 +131,6 @@ export function PhotoDialog({
       description: description || null,
       categoryId,
       locationId: locationId === "none" ? null : locationId,
-      cameraId: cameraId === "none" ? null : cameraId,
-      lensId: lensId === "none" ? null : lensId,
-      iso: iso === "none" ? null : iso,
-      aperture: aperture === "none" ? null : aperture,
-      shutterSpeed: shutterSpeed === "none" ? null : shutterSpeed,
       takenAt: takenAt || null,
       takenWhere: takenWhere || null,
       featured,
@@ -115,7 +143,10 @@ export function PhotoDialog({
 
   async function uploadOne(f: File, label: string) {
     setStatus(`${label} — reading image…`);
-    const { width, height } = await getImageDimensions(f);
+    const [{ width, height }, exif] = await Promise.all([
+      getImageDimensions(f),
+      extractExif(f),
+    ]);
 
     setStatus(`${label} — requesting upload URL…`);
     const presignRes = await fetch("/api/admin/presign", {
@@ -135,10 +166,20 @@ export function PhotoDialog({
     if (!uploadRes.ok) throw new Error(`${label}: upload to R2 failed.`);
 
     setStatus(`${label} — saving…`);
+    const formData = metaBody();
     const saveRes = await fetch("/api/admin/photos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...metaBody(), r2Key: key, r2Url: publicUrl, width, height }),
+      body: JSON.stringify({
+        ...exif,
+        ...formData,
+        // form takenAt wins if set; otherwise keep EXIF takenAt
+        takenAt: formData.takenAt || exif.takenAt || null,
+        r2Key: key,
+        r2Url: publicUrl,
+        width,
+        height,
+      }),
     });
     if (!saveRes.ok) throw new Error(`${label}: failed to save.`);
   }
@@ -286,7 +327,14 @@ export function PhotoDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pd-when">When taken</Label>
+              <Label htmlFor="pd-when">
+                When taken
+                {!isEdit && (
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    (auto-filled from EXIF if blank)
+                  </span>
+                )}
+              </Label>
               <Input
                 id="pd-when"
                 type="date"
@@ -341,28 +389,12 @@ export function PhotoDialog({
               {files.length > 1 && (
                 <p className="text-xs text-muted-foreground">
                   {files.length} photos selected — all will share the same
-                  category, location, date, gear, and tags. Edit titles &amp;
-                  descriptions individually afterwards.
+                  category, location, date, and tags. EXIF is read per-file.
+                  Edit titles &amp; descriptions individually afterwards.
                 </p>
               )}
             </div>
           )}
-
-          <AdvancedPhotoFields
-            cameras={cameras}
-            lenses={lenses}
-            cameraId={cameraId}
-            setCameraId={setCameraId}
-            lensId={lensId}
-            setLensId={setLensId}
-            iso={iso}
-            setIso={setIso}
-            aperture={aperture}
-            setAperture={setAperture}
-            shutterSpeed={shutterSpeed}
-            setShutterSpeed={setShutterSpeed}
-            defaultOpen={advancedOpen}
-          />
 
           <div className="flex items-center justify-between">
             <div>

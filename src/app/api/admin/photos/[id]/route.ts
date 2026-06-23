@@ -49,6 +49,14 @@ export async function PATCH(
   if ("iso" in body) data.iso = body.iso || null;
   if ("aperture" in body) data.aperture = body.aperture || null;
   if ("shutterSpeed" in body) data.shutterSpeed = body.shutterSpeed || null;
+  if ("focalLength" in body) data.focalLength = body.focalLength || null;
+  if ("focalLength35mm" in body) data.focalLength35mm = body.focalLength35mm || null;
+  if ("exposureMode" in body) data.exposureMode = body.exposureMode || null;
+  if ("meteringMode" in body) data.meteringMode = body.meteringMode || null;
+  if ("flash" in body) data.flash = body.flash || null;
+  if ("gpsLat" in body) data.gpsLat = body.gpsLat ?? null;
+  if ("gpsLng" in body) data.gpsLng = body.gpsLng ?? null;
+  if ("gpsAlt" in body) data.gpsAlt = body.gpsAlt ?? null;
   if ("takenAt" in body) data.takenAt = body.takenAt ? new Date(body.takenAt) : null;
   if ("takenWhere" in body) data.takenWhere = body.takenWhere || null;
   if ("featured" in body) data.featured = body.featured;

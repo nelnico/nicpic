@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback, useRef, useState } from "react";
-import { X, ArrowLeft, ArrowRight } from "lucide-react";
+import { X, ArrowLeft, ArrowRight, ChevronDown } from "lucide-react";
 import type { Photo } from "@/types/photo";
 
 interface LightboxProps {
@@ -15,19 +15,13 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   const photo = photos[index];
 
   const trackRef   = useRef<HTMLDivElement>(null);
-  const stageRef   = useRef<HTMLDivElement>(null);
   const startX     = useRef(0);
-  const startY     = useRef(0);
-  const panAtDown  = useRef({ x: 0, y: 0 });
   const hasMoved   = useRef(false);
   const pointerId  = useRef<number | null>(null);
 
-  const [dragX,      setDragX]     = useState(0);
-  const [dragging,   setDragging]  = useState(false);
-  const [zoomed,     setZoomed]    = useState(false);
-  const [zoomLevel,  setZoomLevel] = useState(1);
-  const [panX,       setPanX]      = useState(0);
-  const [panY,       setPanY]      = useState(0);
+  const [dragX,       setDragX]       = useState(0);
+  const [dragging,    setDragging]    = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const go = useCallback(
     (dir: number) => {
@@ -40,13 +34,13 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (zoomed) { setZoomed(false); setPanX(0); setPanY(0); }
-        else onClose();
+        if (detailsOpen) { setDetailsOpen(false); return; }
+        onClose();
       }
-      if (!zoomed && e.key === "ArrowLeft")  go(-1);
-      if (!zoomed && e.key === "ArrowRight") go(1);
+      if (e.key === "ArrowLeft")  go(-1);
+      if (e.key === "ArrowRight") go(1);
     },
-    [onClose, go, zoomed],
+    [onClose, go, detailsOpen],
   );
 
   useEffect(() => {
@@ -59,52 +53,22 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
     };
   }, [handleKey]);
 
-  // Reset zoom and pan when navigating to a different photo.
   useEffect(() => {
-    setZoomed(false);
-    setZoomLevel(1);
-    setPanX(0);
-    setPanY(0);
+    setDetailsOpen(false);
   }, [index]);
 
-  // Compute zoom scale so the image fills the viewport (one dimension edge-to-edge).
-  const computeFillZoom = (el: HTMLDivElement): number => {
-    const cw = el.clientWidth;
-    const ch = el.clientHeight;
-    const photoAspect = photo.width / photo.height;
-    const containerAspect = cw / ch;
-    // Determine which dimension the image binds on at scale 1 (object-contain logic).
-    const imgW = photoAspect >= containerAspect ? cw : ch * photoAspect;
-    const imgH = photoAspect >= containerAspect ? cw / photoAspect : ch;
-    return Math.max(cw / imgW, ch / imgH, 1.5); // always at least 1.5×
-  };
-
   const onPointerDown = (e: React.PointerEvent) => {
-    pointerId.current    = e.pointerId;
-    startX.current       = e.clientX;
-    startY.current       = e.clientY;
-    panAtDown.current    = { x: panX, y: panY };
-    hasMoved.current     = false;
+    pointerId.current = e.pointerId;
+    startX.current    = e.clientX;
+    hasMoved.current  = false;
     setDragging(true);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (!dragging) return;
     const dx = e.clientX - startX.current;
-    const dy = e.clientY - startY.current;
-    if (!hasMoved.current && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-      hasMoved.current = true;
-    }
-    if (zoomed) {
-      const el = stageRef.current;
-      if (!el) return;
-      const maxX = el.clientWidth  * (zoomLevel - 1) / 2;
-      const maxY = el.clientHeight * (zoomLevel - 1) / 2;
-      setPanX(Math.min(maxX, Math.max(-maxX, panAtDown.current.x + dx)));
-      setPanY(Math.min(maxY, Math.max(-maxY, panAtDown.current.y + dy)));
-    } else {
-      setDragX(dx);
-    }
+    if (!hasMoved.current && Math.abs(dx) > 5) hasMoved.current = true;
+    setDragX(dx);
   };
 
   const endDrag = (e: React.PointerEvent) => {
@@ -113,20 +77,9 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
     pointerId.current = null;
 
     if (!hasMoved.current) {
-      if (!zoomed) {
-        const el = stageRef.current;
-        if (el) setZoomLevel(computeFillZoom(el));
-        setPanX(0);
-        setPanY(0);
-        setZoomed(true);
-      } else {
-        setZoomed(false);
-      }
       setDragX(0);
       return;
     }
-
-    if (zoomed) return;
 
     const delta = e.clientX - startX.current;
     const threshold = Math.min(120, (trackRef.current?.clientWidth ?? 600) * 0.18);
@@ -136,9 +89,6 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   };
 
   const translate = `calc(${-index * 100}% + ${dragX}px)`;
-  const cursor = zoomed
-    ? (dragging ? "grabbing" : "move")
-    : "zoom-in";
 
   return (
     <div className="fade-in fixed inset-0 z-50 flex flex-col bg-background">
@@ -166,25 +116,21 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
           transition: "max-height 350ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
-        {!zoomed && (
-          <button
-            type="button"
-            onClick={() => go(-1)}
-            aria-label="Previous"
-            className="absolute left-2 z-10 hidden h-12 w-12 items-center justify-center text-muted-foreground transition-colors hover:text-foreground md:flex"
-          >
-            <ArrowLeft className="h-6 w-6" strokeWidth={1.25} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => go(-1)}
+          aria-label="Previous"
+          className="absolute left-2 z-10 hidden h-12 w-12 items-center justify-center text-muted-foreground transition-colors hover:text-foreground md:flex"
+        >
+          <ArrowLeft className="h-6 w-6" strokeWidth={1.25} />
+        </button>
 
         <div
-          ref={stageRef}
-          className={`relative h-full w-full overflow-hidden ${zoomed ? "touch-none" : "touch-pan-y"}`}
+          className="relative h-full w-full touch-pan-y overflow-hidden"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
-          style={{ cursor }}
         >
           <div
             ref={trackRef}
@@ -194,18 +140,10 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
               transition: dragging ? "none" : "transform 350ms cubic-bezier(0.22, 1, 0.36, 1)",
             }}
           >
-            {photos.map((p, i) => (
+            {photos.map((p) => (
               <div
                 key={p.id}
                 className="flex h-full w-full shrink-0 items-center justify-center"
-                style={
-                  zoomed && i === index
-                    ? {
-                        transform: `translate(${panX}px, ${panY}px) scale(${zoomLevel})`,
-                        transition: dragging ? "none" : "transform 350ms cubic-bezier(0.22, 1, 0.36, 1)",
-                      }
-                    : { transition: "transform 350ms cubic-bezier(0.22, 1, 0.36, 1)" }
-                }
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -221,16 +159,49 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
           </div>
         </div>
 
-        {!zoomed && (
-          <button
-            type="button"
-            onClick={() => go(1)}
-            aria-label="Next"
-            className="absolute right-2 z-10 hidden h-12 w-12 items-center justify-center text-muted-foreground transition-colors hover:text-foreground md:flex"
-          >
-            <ArrowRight className="h-6 w-6" strokeWidth={1.25} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => go(1)}
+          aria-label="Next"
+          className="absolute right-2 z-10 hidden h-12 w-12 items-center justify-center text-muted-foreground transition-colors hover:text-foreground md:flex"
+        >
+          <ArrowRight className="h-6 w-6" strokeWidth={1.25} />
+        </button>
+      </div>
+
+      {/* Bottom info bar + expandable details */}
+      <div className="relative shrink-0">
+        {/* Expandable details panel */}
+        <div
+          className="overflow-hidden transition-[max-height] duration-[400ms] ease-in-out"
+          style={{ maxHeight: detailsOpen ? "50vh" : "0px" }}
+        >
+          <div className="px-6 py-8 md:px-10">
+            <p className="eyebrow text-muted-foreground">Details coming soon</p>
+          </div>
+        </div>
+
+        {/* Info strip */}
+        <button
+          type="button"
+          onClick={() => setDetailsOpen((o) => !o)}
+          className="flex w-full items-end justify-between px-6 py-5 text-left md:px-10"
+        >
+          <div>
+            <p className="eyebrow text-muted-foreground">
+              {photo.category}
+              {photo.location ? ` — ${photo.location}` : ""}
+              {photo.where ? ` · ${photo.where}` : ""}
+            </p>
+            <h2 className="mt-1 font-serif text-2xl leading-tight">{photo.title}</h2>
+          </div>
+          <ChevronDown
+            className={`mb-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 ${
+              detailsOpen ? "rotate-180" : ""
+            }`}
+            strokeWidth={1.5}
+          />
+        </button>
       </div>
     </div>
   );
