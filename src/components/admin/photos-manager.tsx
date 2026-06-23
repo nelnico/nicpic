@@ -19,6 +19,7 @@ type ApiPhoto = {
   title: string | null;
   description: string | null;
   r2Url: string;
+  r2ThumbUrl: string | null;
   featured: boolean;
   categoryId: string;
   locationId: string | null;
@@ -124,7 +125,7 @@ export function PhotosManager() {
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={p.r2Url}
+                    src={p.r2ThumbUrl ?? p.r2Url}
                     alt={p.title ?? "photo"}
                     className="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />

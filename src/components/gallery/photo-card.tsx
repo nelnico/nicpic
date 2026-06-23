@@ -18,7 +18,7 @@ export function PhotoCard({ photo, index, onSelect }: PhotoCardProps) {
         {/* Plain <img> as designed by Lovable; width/height present so there's no CLS. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={photo.src}
+          src={photo.thumbnail}
           alt={photo.title}
           width={photo.width}
           height={photo.height}
@@ -31,7 +31,9 @@ export function PhotoCard({ photo, index, onSelect }: PhotoCardProps) {
             {photo.category}
             {photo.location ? ` — ${photo.location}` : ""}
           </p>
-          <h3 className="mt-1 font-serif text-2xl leading-tight">{photo.title}</h3>
+          {photo.title && (
+            <h3 className="mt-1 font-serif text-2xl leading-tight">{photo.title}</h3>
+          )}
         </div>
       </div>
     </button>

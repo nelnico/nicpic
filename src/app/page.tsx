@@ -26,9 +26,10 @@ async function getGalleryData(): Promise<{
     const photos: Photo[] = rows.map((p) => ({
       id: p.id,
       src: p.r2Url,
+      thumbnail: p.r2ThumbUrl ?? p.r2Url,
       width: p.width,
       height: p.height,
-      title: p.title ?? "Untitled",
+      title: p.title ?? "",
       description: p.description ?? "",
       category: p.category.name,
       location: p.location?.name ?? "",

@@ -6,6 +6,7 @@ export type Category = string;
 export interface Photo {
   id: string;
   src: string;
+  thumbnail: string;
   width: number;
   height: number;
   title: string;

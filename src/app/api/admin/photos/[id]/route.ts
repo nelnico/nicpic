@@ -17,8 +17,11 @@ export async function DELETE(
   const photo = await prisma.photo.findUnique({ where: { id } });
   if (!photo) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Delete from R2
+  // Delete from R2 (original + thumbnail)
   await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: photo.r2Key }));
+  if (photo.r2ThumbKey) {
+    await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: photo.r2ThumbKey }));
+  }
 
   // Delete from DB
   await prisma.photo.delete({ where: { id } });
@@ -60,17 +63,17 @@ export async function PATCH(
 
   // Replace tags only when an array is provided.
   if (Array.isArray(body.tags)) {
-    const tagConnections = await Promise.all(
-      (body.tags as string[]).map(async (tagName) => {
-        const slug = tagName.toLowerCase().replace(/\s+/g, "-");
-        const tag = await prisma.tag.upsert({
-          where: { slug },
-          update: {},
-          create: { name: tagName, slug },
-        });
-        return { tagId: tag.id };
-      })
-    );
+    const uniqueNames = [...new Set((body.tags as string[]).map((t) => t.trim()).filter(Boolean))];
+    const tagConnections: { tagId: string }[] = [];
+    for (const tagName of uniqueNames) {
+      const slug = tagName.toLowerCase().replace(/\s+/g, "-");
+      const tag = await prisma.tag.upsert({
+        where: { slug },
+        update: {},
+        create: { name: tagName, slug },
+      });
+      tagConnections.push({ tagId: tag.id });
+    }
     data.tags = { deleteMany: {}, create: tagConnections };
   }
 

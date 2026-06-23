@@ -156,7 +156,7 @@ export function PhotoDialog({
       body: JSON.stringify({ filename: f.name, contentType: f.type }),
     });
     if (!presignRes.ok) throw new Error(`${label}: failed to get upload URL.`);
-    const { presignedUrl, key, publicUrl } = await presignRes.json();
+    const { presignedUrl, key, publicUrl, thumbKey } = await presignRes.json();
 
     setStatus(`${label} — uploading to R2…`);
     const uploadRes = await fetch(presignedUrl, {
@@ -166,7 +166,7 @@ export function PhotoDialog({
     });
     if (!uploadRes.ok) throw new Error(`${label}: upload to R2 failed.`);
 
-    setStatus(`${label} — saving…`);
+    setStatus(`${label} — generating thumbnail & saving…`);
     const formData = metaBody();
     const saveRes = await fetch("/api/admin/photos", {
       method: "POST",
@@ -178,6 +178,7 @@ export function PhotoDialog({
         takenAt: formData.takenAt || exif.takenAt || null,
         r2Key: key,
         r2Url: publicUrl,
+        thumbKey,
         width,
         height,
       }),

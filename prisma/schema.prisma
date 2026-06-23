@@ -58,6 +58,8 @@ model Photo {
   takenWhere      String?    // freetext e.g. "Near Lower Sabie Rest Camp"
   r2Key        String     @unique
   r2Url        String
+  r2ThumbKey   String?    @unique
+  r2ThumbUrl   String?
   width        Int
   height       Int
   featured     Boolean    @default(false)

@@ -12,7 +12,9 @@ export async function POST(request: NextRequest) {
 
   const { filename, contentType } = await request.json();
   const ext = filename.split(".").pop();
-  const key = `photos/${randomUUID()}.${ext}`;
+  const uuid = randomUUID();
+  const key = `photos/${uuid}.${ext}`;
+  const thumbKey = `photos/${uuid}-thumb.webp`;
 
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET,
@@ -23,5 +25,5 @@ export async function POST(request: NextRequest) {
   const presignedUrl = await getSignedUrl(r2Client, command, { expiresIn: 300 });
   const publicUrl = `${R2_PUBLIC_URL}/${key}`;
 
-  return NextResponse.json({ presignedUrl, key, publicUrl });
+  return NextResponse.json({ presignedUrl, key, publicUrl, thumbKey });
 }

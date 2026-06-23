@@ -240,7 +240,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
               {photo.location ? ` — ${photo.location}` : ""}
               {photo.where ? ` · ${photo.where}` : ""}
             </p>
-            <h2 className="mt-1 font-serif text-2xl leading-tight">{photo.title}</h2>
+            {photo.title && <h2 className="mt-1 font-serif text-2xl leading-tight">{photo.title}</h2>}
           </div>
           <ChevronDown
             className={`mb-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 ${
