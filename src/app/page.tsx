@@ -39,6 +39,8 @@ async function getGalleryData(): Promise<{
       tags: p.tags.map((t) => t.tag.name),
       camera: p.camera?.name ?? "",
       lens: p.lens?.name ?? "",
+      cameraMake: p.cameraMake ?? "",
+      cameraModel: p.cameraModel ?? "",
       iso: p.iso ?? "",
       aperture: p.aperture ?? "",
       shutterSpeed: p.shutterSpeed ?? "",
@@ -47,9 +49,6 @@ async function getGalleryData(): Promise<{
       exposureMode: p.exposureMode ?? "",
       meteringMode: p.meteringMode ?? "",
       flash: p.flash ?? "",
-      gpsLat: p.gpsLat ?? null,
-      gpsLng: p.gpsLng ?? null,
-      gpsAlt: p.gpsAlt ?? null,
     }));
 
     const categories = [...new Set(photos.map((p) => p.category))].sort();

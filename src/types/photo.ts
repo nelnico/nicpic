@@ -18,10 +18,12 @@ export interface Photo {
   tags: string[];
   /** Optional description ("" when none). */
   description: string;
-  // Camera gear (from FK taxonomy, "" when not set).
+  // Camera gear (FK taxonomy, "" when not set).
   camera: string;
   lens: string;
-  // EXIF fields ("" or 0 when not set).
+  // EXIF fields ("" when not set).
+  cameraMake: string;
+  cameraModel: string;
   iso: string;
   aperture: string;
   shutterSpeed: string;
@@ -30,7 +32,4 @@ export interface Photo {
   exposureMode: string;
   meteringMode: string;
   flash: string;
-  gpsLat: number | null;
-  gpsLng: number | null;
-  gpsAlt: number | null;
 }

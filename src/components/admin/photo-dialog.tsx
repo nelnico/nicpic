@@ -43,6 +43,8 @@ async function getImageDimensions(file: File) {
 }
 
 type ExifData = {
+  cameraMake?: string;
+  cameraModel?: string;
   iso?: string;
   aperture?: string;
   shutterSpeed?: string;
@@ -51,9 +53,6 @@ type ExifData = {
   exposureMode?: string;
   meteringMode?: string;
   flash?: string;
-  gpsLat?: number;
-  gpsLng?: number;
-  gpsAlt?: number;
   takenAt?: string;
 };
 
@@ -71,11 +70,13 @@ const METERING_MODE: Record<number, string> = {
 async function extractExif(file: File): Promise<ExifData> {
   try {
     const exifr = (await import("exifr")).default;
-    const raw = await exifr.parse(file, { tiff: true, exif: true, gps: true, reviveValues: true });
+    const raw = await exifr.parse(file, { tiff: true, exif: true, gps: false, reviveValues: true });
 
     const out: ExifData = {};
     if (!raw) return out;
 
+    if (raw.Make) out.cameraMake = String(raw.Make).trim();
+    if (raw.Model) out.cameraModel = String(raw.Model).trim();
     if (raw.ISO) out.iso = String(raw.ISO);
     if (raw.FNumber) out.aperture = `f/${raw.FNumber}`;
     if (raw.ExposureTime) out.shutterSpeed = formatShutterSpeed(raw.ExposureTime as number);
@@ -89,9 +90,6 @@ async function extractExif(file: File): Promise<ExifData> {
       const d = raw.DateTimeOriginal;
       out.takenAt = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     }
-    if (raw.latitude != null) out.gpsLat = raw.latitude as number;
-    if (raw.longitude != null) out.gpsLng = raw.longitude as number;
-    if (raw.GPSAltitude != null) out.gpsAlt = raw.GPSAltitude as number;
     return out;
   } catch (err) {
     console.error("EXIF extraction failed:", err);
