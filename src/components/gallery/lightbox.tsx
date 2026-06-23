@@ -11,6 +11,56 @@ interface LightboxProps {
   onIndexChange: (index: number) => void;
 }
 
+function ExifRow({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd>{value}</dd>
+    </>
+  );
+}
+
+function PhotoDetails({ photo }: { photo: Photo }) {
+  const focalLength = [photo.focalLength, photo.focalLength35mm && photo.focalLength35mm !== photo.focalLength ? `${photo.focalLength35mm} equiv.` : ""]
+    .filter(Boolean).join(" · ");
+
+  const exifRows: [string, string][] = [
+    ["Camera",    photo.cameraModel || photo.cameraMake],
+    ["Aperture",  photo.aperture],
+    ["Shutter",   photo.shutterSpeed],
+    ["ISO",       photo.iso],
+    ["Focal",     focalLength],
+    ["Exposure",  photo.exposureMode],
+    ["Metering",  photo.meteringMode],
+    ["Flash",     photo.flash === "Fired" ? "Fired" : ""],
+  ].filter(([, v]) => v) as [string, string][];
+
+  return (
+    <div className="overflow-y-auto bg-background px-6 pb-4 pt-6 md:px-10">
+      {photo.description && (
+        <p className="mb-5 text-sm leading-relaxed">{photo.description}</p>
+      )}
+
+      {exifRows.length > 0 && (
+        <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1.5 text-sm">
+          {exifRows.map(([label, value]) => (
+            <ExifRow key={label} label={label} value={value} />
+          ))}
+        </dl>
+      )}
+
+      {(photo.date || photo.tags.length > 0) && (
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          {photo.date && <span>{photo.date}</span>}
+          {photo.tags.map((t) => (
+            <span key={t}>#{t}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProps) {
   const photo = photos[index];
 
@@ -170,9 +220,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
           className="absolute inset-x-0 bottom-full overflow-hidden transition-[max-height] duration-[400ms] ease-in-out"
           style={{ maxHeight: detailsOpen ? "50vh" : "0px" }}
         >
-          <div className="bg-background px-6 py-8 md:px-10">
-            <p className="eyebrow text-muted-foreground">Details coming soon</p>
-          </div>
+          <PhotoDetails photo={photo} />
         </div>
 
         {/* Info strip */}
