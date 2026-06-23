@@ -221,11 +221,36 @@ export function Lightbox({
   };
 
   // Manual double-tap: two clicks within 300 ms, with no drag in between.
-  const handleTrackClick = () => {
+  const handleTrackClick = (e: React.MouseEvent) => {
     if (hasMoved.current) return;
     const now = Date.now();
-    if (now - lastTap.current < 300) { openZoom(); lastTap.current = 0; }
-    else lastTap.current = now;
+    if (now - lastTap.current < 300) {
+      // Centre the zoom on the tapped pixel.
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const cw = rect.width;
+      const ch = rect.height;
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      // Rendered image size under object-contain rules
+      const imgAspect = photo.width / photo.height;
+      const renderedW = imgAspect > cw / ch ? cw : ch * imgAspect;
+      const renderedH = imgAspect > cw / ch ? cw / imgAspect : ch;
+
+      // Normalised click position within the rendered image (0–1)
+      const normX = (clickX - (cw - renderedW) / 2) / renderedW;
+      const normY = (clickY - (ch - renderedH) / 2) / renderedH;
+
+      // Pan that centres the clicked natural pixel, then clamp to bounds
+      const maxX = Math.max(0, (photo.width  - cw) / 2);
+      const maxY = Math.max(0, (photo.height - ch) / 2);
+      setZoomed(true);
+      setPanX(Math.max(-maxX, Math.min(maxX, photo.width  * (0.5 - normX))));
+      setPanY(Math.max(-maxY, Math.min(maxY, photo.height * (0.5 - normY))));
+      lastTap.current = 0;
+    } else {
+      lastTap.current = now;
+    }
   };
 
   const handleOverlayClick = () => {

@@ -39,33 +39,50 @@ export async function POST(request: NextRequest) {
     tags,
   } = body;
 
-  // Fetch the uploaded original from R2 and generate a WebP thumbnail.
+  // Fetch the uploaded original from R2, resize it, and generate a thumbnail.
   let r2ThumbUrl: string | null = null;
   let resolvedThumbKey: string | null = null;
+  let processedWidth: number  = width  as number;
+  let processedHeight: number = height as number;
 
   try {
     const imageRes = await fetch(r2Url as string);
     if (!imageRes.ok) throw new Error(`R2 fetch returned ${imageRes.status}`);
-
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
-    const thumbBuffer = await sharp(imageBuffer)
+
+    // Resize full image to max 2560px on longest edge, re-encode as JPEG q85
+    const { data: fullBuffer, info: fullInfo } = await sharp(imageBuffer)
+      .resize({ width: 2560, height: 2560, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 92 })
+      .toBuffer({ resolveWithObject: true });
+
+    await r2Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: r2Key as string,
+      Body: fullBuffer,
+      ContentType: "image/jpeg",
+    }));
+
+    processedWidth  = fullInfo.width;
+    processedHeight = fullInfo.height;
+
+    // Thumbnail from already-resized buffer
+    const thumbBuffer = await sharp(fullBuffer)
       .resize({ width: 800, withoutEnlargement: true })
       .webp({ quality: 75 })
       .toBuffer();
 
-    await r2Client.send(
-      new PutObjectCommand({
-        Bucket: R2_BUCKET,
-        Key: thumbKey as string,
-        Body: thumbBuffer,
-        ContentType: "image/webp",
-      })
-    );
+    await r2Client.send(new PutObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: thumbKey as string,
+      Body: thumbBuffer,
+      ContentType: "image/webp",
+    }));
 
-    r2ThumbUrl = `${R2_PUBLIC_URL}/${thumbKey}`;
+    r2ThumbUrl       = `${R2_PUBLIC_URL}/${thumbKey}`;
     resolvedThumbKey = thumbKey as string;
   } catch (err) {
-    console.error("[photos] thumbnail generation failed:", err);
+    console.error("[photos] image processing failed:", err);
   }
 
   // Upsert tags and connect them (sequential to avoid race on unique name constraint)
@@ -103,8 +120,8 @@ export async function POST(request: NextRequest) {
       r2Url,
       r2ThumbKey: resolvedThumbKey,
       r2ThumbUrl: r2ThumbUrl,
-      width,
-      height,
+      width:  processedWidth,
+      height: processedHeight,
       featured: featured ?? false,
       tags: {
         create: tagConnections,
