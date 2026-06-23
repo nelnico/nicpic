@@ -347,7 +347,7 @@ export function Lightbox({
       </div>
 
       {/* Bottom strip + details panel */}
-      <div className="relative shrink-0 ">
+      <div className="relative z-30 shrink-0">
         <div
           className="absolute inset-x-0 bottom-full overflow-hidden transition-[max-height] duration-[400ms] ease-in-out"
           style={{ maxHeight: detailsOpen ? "50vh" : "0px" }}
