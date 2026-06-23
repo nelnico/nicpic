@@ -108,14 +108,8 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         </button>
       </div>
 
-      {/* Stage */}
-      <div
-        className="relative flex min-h-0 flex-1 items-center md:px-16"
-        style={{
-          maxHeight: `calc(100vw * ${photo.height / photo.width})`,
-          transition: "max-height 350ms cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
-      >
+      {/* Stage — fills all space between top bar and info strip */}
+      <div className="relative flex min-h-0 flex-1 items-center md:px-16">
         <button
           type="button"
           onClick={() => go(-1)}
@@ -169,11 +163,11 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         </button>
       </div>
 
-      {/* Bottom overlay — absolute so it floats over the image without affecting stage size */}
-      <div className="absolute inset-x-0 bottom-0 z-10">
-        {/* Expandable details panel — grows upward */}
+      {/* Bottom: strip in flex flow (always viewport-bottom) + details expanding upward over image */}
+      <div className="relative shrink-0">
+        {/* Details panel — absolute, grows upward over the image, never shifts the stage */}
         <div
-          className="overflow-hidden transition-[max-height] duration-[400ms] ease-in-out"
+          className="absolute inset-x-0 bottom-full overflow-hidden transition-[max-height] duration-[400ms] ease-in-out"
           style={{ maxHeight: detailsOpen ? "50vh" : "0px" }}
         >
           <div className="bg-background px-6 py-8 md:px-10">
