@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import exifr from "exifr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,35 +62,39 @@ function formatShutterSpeed(t: number): string {
   return `1/${Math.round(1 / t)}`;
 }
 
+const EXPOSURE_MODE: Record<number, string> = { 0: "Auto", 1: "Manual", 2: "Bracket" };
+const METERING_MODE: Record<number, string> = {
+  0: "Unknown", 1: "Average", 2: "Center-weighted",
+  3: "Spot", 4: "Multi-spot", 5: "Pattern", 6: "Partial",
+};
+
 async function extractExif(file: File): Promise<ExifData> {
   try {
-    const raw = await exifr.parse(file, {
-      tiff: true,
-      exif: true,
-      gps: true,
-      translateValues: true,
-      reviveValues: true,
-    });
-    if (!raw) return {};
+    const exifr = (await import("exifr")).default;
+    const raw = await exifr.parse(file, { tiff: true, exif: true, gps: true, reviveValues: true });
 
     const out: ExifData = {};
+    if (!raw) return out;
+
     if (raw.ISO) out.iso = String(raw.ISO);
     if (raw.FNumber) out.aperture = `f/${raw.FNumber}`;
-    if (raw.ExposureTime) out.shutterSpeed = formatShutterSpeed(raw.ExposureTime);
+    if (raw.ExposureTime) out.shutterSpeed = formatShutterSpeed(raw.ExposureTime as number);
     if (raw.FocalLength) out.focalLength = `${raw.FocalLength}mm`;
     if (raw.FocalLengthIn35mmFilm) out.focalLength35mm = `${raw.FocalLengthIn35mmFilm}mm`;
-    if (raw.ExposureMode != null) out.exposureMode = String(raw.ExposureMode);
-    if (raw.MeteringMode != null) out.meteringMode = String(raw.MeteringMode);
-    if (raw.Flash != null) out.flash = String(raw.Flash);
-    if (raw.latitude != null) out.gpsLat = raw.latitude;
-    if (raw.longitude != null) out.gpsLng = raw.longitude;
-    if (raw.GPSAltitude != null) out.gpsAlt = raw.GPSAltitude;
+    if (raw.ExposureMode != null) out.exposureMode = EXPOSURE_MODE[raw.ExposureMode as number] ?? String(raw.ExposureMode);
+    if (raw.MeteringMode != null) out.meteringMode = METERING_MODE[raw.MeteringMode as number] ?? String(raw.MeteringMode);
+    // Flash is a bitmask; bit 0 = fired
+    if (raw.Flash != null) out.flash = (raw.Flash as number) & 1 ? "Fired" : "No flash";
     if (raw.DateTimeOriginal instanceof Date) {
       const d = raw.DateTimeOriginal;
       out.takenAt = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     }
+    if (raw.latitude != null) out.gpsLat = raw.latitude as number;
+    if (raw.longitude != null) out.gpsLng = raw.longitude as number;
+    if (raw.GPSAltitude != null) out.gpsAlt = raw.GPSAltitude as number;
     return out;
-  } catch {
+  } catch (err) {
+    console.error("EXIF extraction failed:", err);
     return {};
   }
 }
