@@ -11,50 +11,55 @@ interface LightboxProps {
   onIndexChange: (index: number) => void;
 }
 
-function ExifRow({ label, value }: { label: string; value: string }) {
+function Cell({ label, value }: { label: string; value: string }) {
   return (
-    <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd>{value}</dd>
-    </>
+    <div>
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm">{value}</p>
+    </div>
   );
 }
 
 function PhotoDetails({ photo }: { photo: Photo }) {
-  const focalLength = [photo.focalLength, photo.focalLength35mm && photo.focalLength35mm !== photo.focalLength ? `${photo.focalLength35mm} equiv.` : ""]
-    .filter(Boolean).join(" · ");
+  const camera = photo.cameraModel || photo.cameraMake;
+  const focalLength = [
+    photo.focalLength,
+    photo.focalLength35mm && photo.focalLength35mm !== photo.focalLength
+      ? `${photo.focalLength35mm} equiv.`
+      : "",
+  ].filter(Boolean).join(" · ");
 
-  const exifRows: [string, string][] = [
-    ["Camera",    photo.cameraModel || photo.cameraMake],
-    ["Aperture",  photo.aperture],
-    ["Shutter",   photo.shutterSpeed],
-    ["ISO",       photo.iso],
-    ["Focal",     focalLength],
-    ["Exposure",  photo.exposureMode],
-    ["Metering",  photo.meteringMode],
-    ["Flash",     photo.flash === "Fired" ? "Fired" : ""],
+  const grid: [string, string][] = [
+    ["Aperture", photo.aperture],
+    ["Shutter",  photo.shutterSpeed],
+    ["ISO",      photo.iso],
+    ["Focal",    focalLength],
+    ["Exposure", photo.exposureMode],
+    ["Flash",    photo.flash === "Fired" ? "Fired" : ""],
+    ["Date",     photo.date],
   ].filter(([, v]) => v) as [string, string][];
 
   return (
-    <div className="overflow-y-auto bg-background px-6 pb-4 pt-6 md:px-10">
+    <div className="overflow-y-auto bg-background/90 px-6 pb-4 pt-6 backdrop-blur-md md:px-10">
       {photo.description && (
         <p className="mb-5 text-sm leading-relaxed">{photo.description}</p>
       )}
 
-      {exifRows.length > 0 && (
-        <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1.5 text-sm">
-          {exifRows.map(([label, value]) => (
-            <ExifRow key={label} label={label} value={value} />
-          ))}
-        </dl>
+      {camera && (
+        <p className="mb-3 text-sm">{camera}</p>
       )}
 
-      {(photo.date || photo.tags.length > 0) && (
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          {photo.date && <span>{photo.date}</span>}
-          {photo.tags.map((t) => (
-            <span key={t}>#{t}</span>
+      {grid.length > 0 && (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+          {grid.map(([label, value]) => (
+            <Cell key={label} label={label} value={value} />
           ))}
+        </div>
+      )}
+
+      {photo.tags.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          {photo.tags.map((t) => <span key={t}>#{t}</span>)}
         </div>
       )}
     </div>
@@ -227,7 +232,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         <button
           type="button"
           onClick={() => setDetailsOpen((o) => !o)}
-          className="flex w-full items-end justify-between bg-background px-6 py-5 text-left md:px-10"
+          className="flex w-full items-end justify-between bg-background/90 px-6 py-5 text-left backdrop-blur-md md:px-10"
         >
           <div>
             <p className="eyebrow text-muted-foreground">
@@ -239,7 +244,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
           </div>
           <ChevronDown
             className={`mb-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 ${
-              detailsOpen ? "rotate-180" : ""
+              detailsOpen ? "" : "rotate-180"
             }`}
             strokeWidth={1.5}
           />
