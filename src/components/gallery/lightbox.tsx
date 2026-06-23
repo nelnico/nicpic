@@ -169,14 +169,14 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         </button>
       </div>
 
-      {/* Bottom info bar + expandable details */}
-      <div className="relative shrink-0">
-        {/* Expandable details panel */}
+      {/* Bottom overlay — absolute so it floats over the image without affecting stage size */}
+      <div className="absolute inset-x-0 bottom-0 z-10">
+        {/* Expandable details panel — grows upward */}
         <div
           className="overflow-hidden transition-[max-height] duration-[400ms] ease-in-out"
           style={{ maxHeight: detailsOpen ? "50vh" : "0px" }}
         >
-          <div className="px-6 py-8 md:px-10">
+          <div className="bg-background px-6 py-8 md:px-10">
             <p className="eyebrow text-muted-foreground">Details coming soon</p>
           </div>
         </div>
@@ -185,7 +185,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         <button
           type="button"
           onClick={() => setDetailsOpen((o) => !o)}
-          className="flex w-full items-end justify-between px-6 py-5 text-left md:px-10"
+          className="flex w-full items-end justify-between bg-background px-6 py-5 text-left md:px-10"
         >
           <div>
             <p className="eyebrow text-muted-foreground">
