@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useCallback, useRef, useState } from "react";
-import { X, ArrowLeft, ArrowRight, ChevronDown } from "lucide-react";
 import type { Photo } from "@/types/photo";
+import { ArrowLeft, ArrowRight, ChevronDown, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface LightboxProps {
   photos: Photo[];
@@ -27,16 +27,18 @@ function PhotoDetails({ photo }: { photo: Photo }) {
     photo.focalLength35mm && photo.focalLength35mm !== photo.focalLength
       ? `${photo.focalLength35mm} equiv.`
       : "",
-  ].filter(Boolean).join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   const grid: [string, string][] = [
     ["Aperture", photo.aperture],
-    ["Shutter",  photo.shutterSpeed],
-    ["ISO",      photo.iso],
-    ["Focal",    focalLength],
+    ["Shutter", photo.shutterSpeed],
+    ["ISO", photo.iso],
+    ["Focal", focalLength],
     ["Exposure", photo.exposureMode],
-    ["Flash",    photo.flash === "Fired" ? "Fired" : ""],
-    ["Date",     photo.date],
+    ["Flash", photo.flash === "Fired" ? "Fired" : ""],
+    ["Date", photo.date],
   ].filter(([, v]) => v) as [string, string][];
 
   return (
@@ -45,9 +47,7 @@ function PhotoDetails({ photo }: { photo: Photo }) {
         <p className="mb-5 text-sm leading-relaxed">{photo.description}</p>
       )}
 
-      {camera && (
-        <p className="mb-3 text-sm">{camera}</p>
-      )}
+      {camera && <p className="mb-3 text-sm">{camera}</p>}
 
       {grid.length > 0 && (
         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -59,24 +59,43 @@ function PhotoDetails({ photo }: { photo: Photo }) {
 
       {photo.tags.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          {photo.tags.map((t) => <span key={t}>#{t}</span>)}
+          {photo.tags.map((t) => (
+            <span key={t}>#{t}</span>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProps) {
+export function Lightbox({
+  photos,
+  index,
+  onClose,
+  onIndexChange,
+}: LightboxProps) {
   const photo = photos[index];
 
   const trackRef   = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const startX     = useRef(0);
   const hasMoved   = useRef(false);
-  const pointerId  = useRef<number | null>(null);
+  const hasPanned  = useRef(false);
+  const lastTap    = useRef(0);
+  const zoomStart  = useRef<{
+    x: number;
+    y: number;
+    panX: number;
+    panY: number;
+  } | null>(null);
 
-  const [dragX,       setDragX]       = useState(0);
-  const [dragging,    setDragging]    = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [panning, setPanning] = useState(false);
 
   const go = useCallback(
     (dir: number) => {
@@ -86,16 +105,35 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
     [index, photos.length, onIndexChange],
   );
 
+  const openZoom = useCallback(() => {
+    setZoomed(true);
+    setPanX(0);
+    setPanY(0);
+  }, []);
+  const closeZoom = useCallback(() => {
+    setZoomed(false);
+    setPanX(0);
+    setPanY(0);
+  }, []);
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (detailsOpen) { setDetailsOpen(false); return; }
+        if (zoomed) {
+          closeZoom();
+          return;
+        }
+        if (detailsOpen) {
+          setDetailsOpen(false);
+          return;
+        }
         onClose();
       }
-      if (e.key === "ArrowLeft")  go(-1);
-      if (e.key === "ArrowRight") go(1);
+      if (!zoomed) {
+        if (e.key === "ArrowLeft") go(-1);
+        if (e.key === "ArrowRight") go(1);
+      }
     },
-    [onClose, go, detailsOpen],
+    [onClose, go, detailsOpen, zoomed, closeZoom],
   );
 
   useEffect(() => {
@@ -108,14 +146,17 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
     };
   }, [handleKey]);
 
+  // Reset zoom and details when photo changes
   useEffect(() => {
     setDetailsOpen(false);
-  }, [index]);
+    closeZoom();
+  }, [index, closeZoom]);
+
+  // ── Swipe handlers (normal mode) ────────────────────────────────────────────
 
   const onPointerDown = (e: React.PointerEvent) => {
-    pointerId.current = e.pointerId;
-    startX.current    = e.clientX;
-    hasMoved.current  = false;
+    startX.current = e.clientX;
+    hasMoved.current = false;
     setDragging(true);
   };
 
@@ -129,7 +170,6 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   const endDrag = (e: React.PointerEvent) => {
     if (!dragging) return;
     setDragging(false);
-    pointerId.current = null;
 
     if (!hasMoved.current) {
       setDragX(0);
@@ -137,10 +177,62 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
     }
 
     const delta = e.clientX - startX.current;
-    const threshold = Math.min(120, (trackRef.current?.clientWidth ?? 600) * 0.18);
+    const threshold = Math.min(
+      120,
+      (trackRef.current?.clientWidth ?? 600) * 0.18,
+    );
     if (delta <= -threshold) go(1);
     else if (delta >= threshold) go(-1);
     setDragX(0);
+  };
+
+  // ── Pan handlers (zoom mode) ─────────────────────────────────────────────
+
+  const zoomPointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    hasPanned.current = false;
+    zoomStart.current = { x: e.clientX, y: e.clientY, panX, panY };
+    setPanning(true);
+  };
+
+  const zoomPointerMove = (e: React.PointerEvent) => {
+    if (!zoomStart.current) return;
+    const newX = zoomStart.current.panX + (e.clientX - zoomStart.current.x);
+    const newY = zoomStart.current.panY + (e.clientY - zoomStart.current.y);
+    if (Math.abs(newX - (zoomStart.current?.panX ?? 0)) > 5 ||
+        Math.abs(newY - (zoomStart.current?.panY ?? 0)) > 5) {
+      hasPanned.current = true;
+    }
+    if (overlayRef.current) {
+      const { clientWidth: cw, clientHeight: ch } = overlayRef.current;
+      const maxX = Math.max(0, (photo.width  - cw) / 2);
+      const maxY = Math.max(0, (photo.height - ch) / 2);
+      setPanX(Math.max(-maxX, Math.min(maxX, newX)));
+      setPanY(Math.max(-maxY, Math.min(maxY, newY)));
+    } else {
+      setPanX(newX);
+      setPanY(newY);
+    }
+  };
+
+  const zoomPointerUp = () => {
+    zoomStart.current = null;
+    setPanning(false);
+  };
+
+  // Manual double-tap: two clicks within 300 ms, with no drag in between.
+  const handleTrackClick = () => {
+    if (hasMoved.current) return;
+    const now = Date.now();
+    if (now - lastTap.current < 300) { openZoom(); lastTap.current = 0; }
+    else lastTap.current = now;
+  };
+
+  const handleOverlayClick = () => {
+    if (hasPanned.current) return;
+    const now = Date.now();
+    if (now - lastTap.current < 300) { closeZoom(); lastTap.current = 0; }
+    else lastTap.current = now;
   };
 
   const translate = `calc(${-index * 100}% + ${dragX}px)`;
@@ -163,8 +255,40 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         </button>
       </div>
 
-      {/* Stage — fills all space between top bar and info strip */}
+      {/* Stage */}
       <div className="relative flex min-h-0 flex-1 items-center md:px-16">
+        {/* Zoom overlay — covers stage, blocks swipe, enables pan */}
+        {zoomed && (
+          <div
+            ref={overlayRef}
+            className={`absolute inset-0 z-20 touch-none overflow-hidden bg-background ${panning ? "cursor-grabbing" : "cursor-grab"}`}
+            onPointerDown={zoomPointerDown}
+            onPointerMove={zoomPointerMove}
+            onPointerUp={zoomPointerUp}
+            onPointerCancel={zoomPointerUp}
+            onClick={handleOverlayClick}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photo.src}
+              alt={photo.title}
+              width={photo.width}
+              height={photo.height}
+              draggable={false}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))`,
+                maxWidth: "none",
+                maxHeight: "none",
+                userSelect: "none",
+                pointerEvents: "none",
+              }}
+            />
+          </div>
+        )}
+
         <button
           type="button"
           onClick={() => go(-1)}
@@ -174,19 +298,23 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
           <ArrowLeft className="h-6 w-6" strokeWidth={1.25} />
         </button>
 
+        {/* Sliding track */}
         <div
           className="relative h-full w-full touch-pan-y overflow-hidden"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
+          onClick={handleTrackClick}
         >
           <div
             ref={trackRef}
             className="flex h-full"
             style={{
               transform: `translate3d(${translate}, 0, 0)`,
-              transition: dragging ? "none" : "transform 350ms cubic-bezier(0.22, 1, 0.36, 1)",
+              transition: dragging
+                ? "none"
+                : "transform 350ms cubic-bezier(0.22, 1, 0.36, 1)",
             }}
           >
             {photos.map((p) => (
@@ -218,9 +346,8 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
         </button>
       </div>
 
-      {/* Bottom: strip in flex flow (always viewport-bottom) + details expanding upward over image */}
-      <div className="relative shrink-0">
-        {/* Details panel — absolute, grows upward over the image, never shifts the stage */}
+      {/* Bottom strip + details panel */}
+      <div className="relative shrink-0 ">
         <div
           className="absolute inset-x-0 bottom-full overflow-hidden transition-[max-height] duration-[400ms] ease-in-out"
           style={{ maxHeight: detailsOpen ? "50vh" : "0px" }}
@@ -228,7 +355,6 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
           <PhotoDetails photo={photo} />
         </div>
 
-        {/* Info strip */}
         <button
           type="button"
           onClick={() => setDetailsOpen((o) => !o)}
@@ -240,7 +366,11 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
               {photo.location ? ` — ${photo.location}` : ""}
               {photo.where ? ` · ${photo.where}` : ""}
             </p>
-            {photo.title && <h2 className="mt-1 font-serif text-2xl leading-tight">{photo.title}</h2>}
+            {photo.title && (
+              <h2 className="mt-1 font-serif text-2xl leading-tight">
+                {photo.title}
+              </h2>
+            )}
           </div>
           <ChevronDown
             className={`mb-1 h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 ${
