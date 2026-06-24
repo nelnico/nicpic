@@ -121,8 +121,9 @@ export function PhotosManager() {
   );
 
   async function loadPhotos() {
-    const data = await fetch("/api/photos").then((r) => r.json());
-    setPhotos(Array.isArray(data) ? data : []);
+    const data = await fetch("/api/photos?limit=0").then((r) => r.json());
+    const list = Array.isArray(data) ? data : (data?.photos ?? []);
+    setPhotos(list);
   }
 
   useEffect(() => {

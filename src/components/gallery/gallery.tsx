@@ -1,31 +1,114 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Nav } from "@/components/gallery/nav";
 import { FilterBar } from "@/components/gallery/filter-bar";
 import { PhotoCard } from "@/components/gallery/photo-card";
 import { Lightbox } from "@/components/gallery/lightbox";
 import type { Category, Photo } from "@/types/photo";
 
+const LIMIT = 30;
+
 interface GalleryProps {
   photos: Photo[];
   categories: Category[];
+  initialNextCursor: number | null;
 }
 
-export function Gallery({ photos, categories }: GalleryProps) {
-  const [active, setActive] = useState<Category | "All">("All");
+function mapApiPhoto(p: Record<string, unknown>): Photo {
+  const category = p.category as { name: string };
+  const location = p.location as { name: string } | null;
+  const tags     = p.tags as { tag: { name: string } }[];
+  const takenAt  = p.takenAt as string | null;
+
+  return {
+    id:            p.id as string,
+    src:           p.r2Url as string,
+    thumbnail:     (p.r2ThumbUrl ?? p.r2Url) as string,
+    width:         p.width as number,
+    height:        p.height as number,
+    title:         (p.title ?? "") as string,
+    description:   (p.description ?? "") as string,
+    category:      category.name,
+    location:      location?.name ?? "",
+    where:         (p.takenWhere ?? "") as string,
+    date:          takenAt
+      ? new Date(takenAt).toLocaleString("en-US", { month: "long", year: "numeric" })
+      : "",
+    tags:          tags.map((t) => t.tag.name),
+    cameraMake:    (p.cameraMake ?? "") as string,
+    cameraModel:   (p.cameraModel ?? "") as string,
+    iso:           (p.iso ?? "") as string,
+    aperture:      (p.aperture ?? "") as string,
+    shutterSpeed:  (p.shutterSpeed ?? "") as string,
+    focalLength:   (p.focalLength ?? "") as string,
+    focalLength35mm: (p.focalLength35mm ?? "") as string,
+    exposureMode:  (p.exposureMode ?? "") as string,
+    meteringMode:  (p.meteringMode ?? "") as string,
+    flash:         (p.flash ?? "") as string,
+  };
+}
+
+export function Gallery({ photos: initialPhotos, categories, initialNextCursor }: GalleryProps) {
+  const [photos,     setPhotos]     = useState<Photo[]>(initialPhotos);
+  const [cursor,     setCursor]     = useState<number | null>(initialNextCursor);
+  const [loading,    setLoading]    = useState(false);
+  const [active,     setActive]     = useState<Category | "All">("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadingRef  = useRef(false);
 
-  const visible = useMemo(
-    () => (active === "All" ? photos : photos.filter((p) => p.category === active)),
-    [active, photos],
-  );
+  const fetchPhotos = useCallback(async (category: Category | "All", cur: number | null) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: String(LIMIT) });
+      if (category !== "All") params.set("category", category);
+      if (cur !== null) params.set("cursor", String(cur));
 
-  const selectedIndex = visible.findIndex((p) => p.id === selectedId);
-  const selected = selectedIndex >= 0 ? visible[selectedIndex] : null;
+      const res  = await fetch(`/api/photos?${params}`);
+      const data = await res.json() as { photos: Record<string, unknown>[]; nextCursor: number | null };
 
-  const handleSelect = (photo: Photo) => setSelectedId(photo.id);
-  const handleClose = () => setSelectedId(null);
+      const mapped = data.photos.map(mapApiPhoto);
+      setPhotos(cur === null ? mapped : (prev) => [...prev, ...mapped]);
+      setCursor(data.nextCursor);
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
+    }
+  }, []);
+
+  // Reset and reload when category changes (skip on first render — SSR data is already loaded)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    setPhotos([]);
+    setCursor(null);
+    fetchPhotos(active, null);
+  }, [active, fetchPhotos]);
+
+  // Infinite scroll sentinel
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !loadingRef.current) {
+          setCursor((cur) => {
+            if (cur !== null) fetchPhotos(active, cur);
+            return cur;
+          });
+        }
+      },
+      { rootMargin: "300px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [active, fetchPhotos]);
+
+  const selectedIndex = photos.findIndex((p) => p.id === selectedId);
+  const selected      = selectedIndex >= 0 ? photos[selectedIndex] : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,43 +117,48 @@ export function Gallery({ photos, categories }: GalleryProps) {
       <main className="mx-auto max-w-[1600px] px-6 md:px-10">
         <div className="fixed top-[65px] left-0 right-0 z-20 bg-background/80 backdrop-blur-md pt-2">
           <div className="mx-auto max-w-[1600px] px-6 md:px-10">
-            <FilterBar
-              categories={categories}
-              active={active}
-              onChange={setActive}
-            />
+            <FilterBar categories={categories} active={active} onChange={setActive} />
           </div>
         </div>
 
         <section id="work" className="pt-16 pb-10 md:pt-14">
-          {visible.length === 0 ? (
+          {photos.length === 0 && !loading ? (
             <div className="mt-10 flex min-h-[40vh] items-center justify-center">
               <p className="eyebrow text-muted-foreground">No photos yet</p>
             </div>
           ) : (
-            <div
-              className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-              style={{ gridAutoRows: "4px", gap: "16px" }}
-            >
-              {visible.map((photo, i) => (
-                <PhotoCard
-                  key={photo.id}
-                  photo={photo}
-                  index={i}
-                  onSelect={handleSelect}
-                />
-              ))}
-            </div>
+            <>
+              <div
+                className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                style={{ gridAutoRows: "4px", gap: "16px" }}
+              >
+                {photos.map((photo, i) => (
+                  <PhotoCard
+                    key={photo.id}
+                    photo={photo}
+                    index={i}
+                    onSelect={(p) => setSelectedId(p.id)}
+                  />
+                ))}
+              </div>
+
+              {/* Sentinel + loading indicator */}
+              <div ref={sentinelRef} className="mt-8 flex justify-center">
+                {loading && (
+                  <p className="eyebrow text-muted-foreground">Loading…</p>
+                )}
+              </div>
+            </>
           )}
         </section>
       </main>
 
       {selected && (
         <Lightbox
-          photos={visible}
+          photos={photos}
           index={selectedIndex}
-          onClose={handleClose}
-          onIndexChange={(i) => setSelectedId(visible[i].id)}
+          onClose={() => setSelectedId(null)}
+          onIndexChange={(i) => setSelectedId(photos[i].id)}
         />
       )}
     </div>
