@@ -14,9 +14,6 @@ function r2Hostname(): string {
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  outputFileTracingIncludes: {
-    "*": ["node_modules/sharp/**/*"],
-  },
   images: {
     remotePatterns: [
       {
