@@ -76,12 +76,16 @@ export function Lightbox({
 }: LightboxProps) {
   const photo = photos[index];
 
-  const trackRef   = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const startX     = useRef(0);
-  const hasMoved   = useRef(false);
-  const hasPanned  = useRef(false);
-  const lastTap    = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef    = useRef<HTMLDivElement>(null);
+  const trackRef    = useRef<HTMLDivElement>(null);
+  const overlayRef  = useRef<HTMLDivElement>(null);
+  const startX      = useRef(0);
+  const hasMoved    = useRef(false);
+  const hasPanned   = useRef(false);
+  const lastTap     = useRef(0);
+  const pinchStartDist = useRef(0);
+  const isPinching     = useRef(false);
   const zoomStart  = useRef<{
     x: number;
     y: number;
@@ -146,6 +150,69 @@ export function Lightbox({
     };
   }, [handleKey]);
 
+  // Pinch-to-zoom
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    function touchDist(touches: TouchList) {
+      return Math.hypot(
+        touches[1].clientX - touches[0].clientX,
+        touches[1].clientY - touches[0].clientY,
+      );
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        isPinching.current = true;
+        pinchStartDist.current = touchDist(e.touches);
+        setDragging(false);
+        setDragX(0);
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!isPinching.current || e.touches.length !== 2) return;
+      e.preventDefault();
+      const ratio = touchDist(e.touches) / pinchStartDist.current;
+
+      if (!zoomed && ratio > 1.3) {
+        const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const rect = (stageRef.current ?? el)!.getBoundingClientRect();
+        const cw = rect.width;
+        const ch = rect.height;
+        const imgAspect = photo.width / photo.height;
+        const renderedW = imgAspect > cw / ch ? cw : ch * imgAspect;
+        const renderedH = imgAspect > cw / ch ? cw / imgAspect : ch;
+        const normX = (mx - rect.left - (cw - renderedW) / 2) / renderedW;
+        const normY = (my - rect.top  - (ch - renderedH) / 2) / renderedH;
+        const maxX = Math.max(0, (photo.width  - cw) / 2);
+        const maxY = Math.max(0, (photo.height - ch) / 2);
+        setZoomed(true);
+        setPanX(Math.max(-maxX, Math.min(maxX, photo.width  * (0.5 - normX))));
+        setPanY(Math.max(-maxY, Math.min(maxY, photo.height * (0.5 - normY))));
+        isPinching.current = false;
+      } else if (zoomed && ratio < 0.75) {
+        closeZoom();
+        isPinching.current = false;
+      }
+    }
+
+    function onTouchEnd() {
+      isPinching.current = false;
+    }
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove",  onTouchMove,  { passive: false });
+    el.addEventListener("touchend",   onTouchEnd,   { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove",  onTouchMove);
+      el.removeEventListener("touchend",   onTouchEnd);
+    };
+  }, [zoomed, photo, closeZoom]);
+
   // Reset zoom and details when photo changes
   useEffect(() => {
     setDetailsOpen(false);
@@ -155,13 +222,14 @@ export function Lightbox({
   // ── Swipe handlers (normal mode) ────────────────────────────────────────────
 
   const onPointerDown = (e: React.PointerEvent) => {
+    if (isPinching.current) return;
     startX.current = e.clientX;
     hasMoved.current = false;
     setDragging(true);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragging) return;
+    if (!dragging || isPinching.current) return;
     const dx = e.clientX - startX.current;
     if (!hasMoved.current && Math.abs(dx) > 5) hasMoved.current = true;
     setDragX(dx);
@@ -263,7 +331,7 @@ export function Lightbox({
   const translate = `calc(${-index * 100}% + ${dragX}px)`;
 
   return (
-    <div className="fade-in fixed inset-0 z-50 flex flex-col bg-background">
+    <div ref={containerRef} className="fade-in fixed inset-0 z-50 flex flex-col bg-background">
       {/* Top bar */}
       <div className="flex items-center justify-between px-6 py-5 md:px-10 [@media(max-height:500px)]:py-1.5">
         <span className="eyebrow text-muted-foreground">
@@ -281,7 +349,7 @@ export function Lightbox({
       </div>
 
       {/* Stage */}
-      <div className="relative flex min-h-0 flex-1 items-center md:px-16">
+      <div ref={stageRef} className="relative flex min-h-0 flex-1 items-center md:px-16">
         {/* Zoom overlay — covers stage, blocks swipe, enables pan */}
         {zoomed && (
           <div
