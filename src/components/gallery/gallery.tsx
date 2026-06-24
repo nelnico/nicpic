@@ -48,7 +48,10 @@ export function Gallery({ photos, categories }: GalleryProps) {
               <p className="eyebrow text-muted-foreground">No photos yet</p>
             </div>
           ) : (
-            <div className="mt-10 columns-1 gap-5 sm:columns-2 lg:columns-3">
+            <div
+              className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+              style={{ gridAutoRows: "4px", gap: "16px" }}
+            >
               {visible.map((photo, i) => (
                 <PhotoCard
                   key={photo.id}

@@ -1,4 +1,10 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import type { Photo } from "@/types/photo";
+
+const ROW_HEIGHT = 4;
+const GAP = 16;
 
 interface PhotoCardProps {
   photo: Photo;
@@ -7,15 +13,33 @@ interface PhotoCardProps {
 }
 
 export function PhotoCard({ photo, index, onSelect }: PhotoCardProps) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [span, setSpan] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const h = el.scrollHeight;
+      if (h > 0) setSpan(Math.ceil((h + GAP) / (ROW_HEIGHT + GAP)));
+    };
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <button
+      ref={ref}
       type="button"
       onClick={() => onSelect(photo)}
-      style={{ animationDelay: `${Math.min(index * 55, 500)}ms` }}
-      className="reveal-up group mb-5 block w-full cursor-pointer overflow-hidden text-left"
+      style={{
+        animationDelay: `${Math.min(index * 55, 500)}ms`,
+        gridRowEnd: span ? `span ${span}` : undefined,
+      }}
+      className="reveal-up group block w-full cursor-pointer overflow-hidden text-left"
     >
       <div className="relative overflow-hidden bg-card">
-        {/* Plain <img> as designed by Lovable; width/height present so there's no CLS. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={photo.thumbnail}
