@@ -1,61 +1,46 @@
 # Build Progress — Nico's Photo Portfolio
 
 > **Purpose:** single source of truth for where this build is, so work can resume after any restart.
-> **Last updated:** 2026-06-16
+> **Last updated:** 2026-06-24
 
 ---
 
 ## ⏸ Where we are right now (resume here)
 
-**Done:** App fully built, **building green**, **Neon DB + Cloudflare R2 live**. Data model:
-Category required on a photo; **Location, Camera, Lens independent + optional + reusable**;
-optional **ISO / aperture / shutter** (strings). Lightbox shows **category — location** + an
-**info icon** revealing gear/settings.
+**App is live on Vercel. Build is green. All core features done.**
 
-**Admin is now a single hub** (`/admin`): a **Photos** box (thumbnail grid, Upload button,
-click-to-edit, quick featured star) + four **taxonomy boxes** (Categories/Locations/Cameras/
-Lenses). Everything is **dialog-based**: photo Upload & Edit use `PhotoDialog`; taxonomy
-add/edit/delete use `TaxonomyManager`. Header is just the **logo (→ `/`) + Log out**. The old
-`/admin/upload`, `/admin/photos`, `/admin/categories`, `/admin/photos/[id]/edit` pages now
-**redirect to `/admin`**.
+The gallery is a fully functional photo portfolio with:
+- **Public gallery** — CSS Grid masonry, left-to-right ordering, infinite scroll (30/page, cursor-based), category filter tabs, lightbox with swipe + pinch-to-zoom + EXIF panel.
+- **Admin** — drag-and-drop photo reordering, thumbnail grid, upload/edit dialog, category/location/tag management.
+- **Storage** — Cloudflare R2 (upload via presigned URL, thumbnails generated server-side with jimp).
+- **DB** — Neon Postgres via Prisma 7 + `@prisma/adapter-pg`.
 
-**▶ MUST DO FIRST: restart `npm run dev`.** The schema changed and the Prisma client was
-regenerated (Camera/Lens/EXIF added), so a running dev server is stale.
-
-**Then:**
-1. `/admin/login` (password `your-admin-password`) → `/admin/categories`: create your
-   categories (e.g. People, Landscape, Wildlife) and any locations (e.g. Cape Town, Kruger).
-2. `/admin/upload`: pick a category (required), optionally a location, choose an image, upload.
-3. Confirm it shows on `/`.
-4. Then → deployment (Phase 13, Vercel).
-
-**Reminders:**
-- Admin password is `your-admin-password` (in `.env.local`) — change anytime.
-- Schema was applied via `prisma db push` (not a tracked migration) — see migration note below.
-- R2 CORS currently allows only localhost; add the production origin when deploying.
+**To resume dev:** `npm run dev` — no stale env issues, no migrations pending.
 
 ---
 
 ## How to resume after a restart
 
 1. Read this file top to bottom.
-2. Run `npm install` (if `node_modules` is missing) then `npm run build` — it should pass clean.
-3. Check **Outstanding inputs** and **Next step** below to see what to do next.
-4. Background context also lives in Claude memory (`photo-portfolio-build`, `prisma7-stack-adaptations`).
+2. `npm install` (if `node_modules` missing) then `npm run build` — should pass clean.
+3. Check **Next step** and **Backlog** below.
+4. Background context in Claude memory: `photo-portfolio-build`, `prisma7-stack-adaptations`.
 
 ---
 
-## Stack (as actually installed)
+## Stack
 
-| Concern | Choice | Installed version |
+| Concern | Choice | Version |
 |---|---|---|
-| Framework | Next.js 16 App Router + TS | next 16.2.9, react 19.2.4 |
-| Styling | Tailwind v4 + shadcn/ui (style `base-nova` on **Base UI**, neutral, CSS vars) | tailwind v4 |
+| Framework | Next.js 16 App Router + TS | next 16.x, react 19.x |
+| Styling | Tailwind v4 + shadcn/ui (base-nova on Base UI) | tailwind v4 |
 | ORM | Prisma 7 + PostgreSQL | prisma 7.8.0 |
-| DB runtime driver | `@prisma/adapter-pg` + `pg` (Prisma 7 driver adapter) | adapter-pg 7.8.0 |
+| DB driver | `@prisma/adapter-pg` + `pg` | adapter-pg 7.8.0 |
+| Image processing | jimp (pure JS — sharp fails on Vercel serverless) | jimp 1.x |
 | Photo storage | Cloudflare R2 via AWS S3 SDK v3 | @aws-sdk/client-s3 |
 | Auth | Hardcoded password → signed JWT cookie (`jose`) via `src/proxy.ts` | jose 6 |
-| Hosting | Vercel | — |
+| Drag-and-drop | dnd-kit | @dnd-kit/core, /sortable, /utilities |
+| Hosting | Vercel | live |
 
 ---
 
@@ -64,123 +49,132 @@ regenerated (Camera/Lens/EXIF added), so a running dev server is stale.
 | Phase | What | Status |
 |---|---|---|
 | 1 | Scaffold + deps + shadcn | ✅ Done |
-| 2 | Prisma schema + migration | ✅ Done — migrated to Neon, write/read smoke-tested |
-| 3 | R2 client (`src/lib/r2.ts`) | ✅ Done — creds live, pipeline verified |
+| 2 | Prisma schema + migration | ✅ Done — Neon, write/read smoke-tested |
+| 3 | R2 client (`src/lib/r2.ts`) | ✅ Done |
 | 4 | Auth lib + route protection (`src/proxy.ts`) | ✅ Done |
 | 5 | Admin login page + API | ✅ Done |
 | 6 | Presign + save APIs + upload form | ✅ Done |
-| 7 | Categories + locations APIs (+ `/admin/categories` page) | ✅ Done |
-| 8 | Public gallery (Lovable design) — homepage `/` | ✅ Done |
-| 9 | Public components (Nav, FilterBar, PhotoCard, Lightbox, Gallery) | ✅ Done |
+| 7 | Categories + locations APIs | ✅ Done |
+| 8–9 | Public gallery + components | ✅ Done |
 | 10 | Admin dashboard, manage-photos, delete/patch API | ✅ Done |
-| 11 | Next config (R2 images) | ✅ Done |
-| 12 | R2 bucket/token setup (manual in Cloudflare) | ✅ Done — bucket `nicpic`, r2.dev URL, CORS, token |
-| 13 | Vercel deploy + domain | ⏳ **Next** |
-
-`npm run build` currently passes, and the homepage was smoke-tested (renders the nav + empty-gallery state; dark theme + fonts compile correctly).
-
-### Design note — Lovable vs. the original doc's routes
-Lovable designed a **single-page filterable gallery** with an in-page **lightbox** (swipe + ←/→ + Esc), not the doc's separate `/gallery`, `/gallery/[category]`, `/gallery/[category]/[location]`, `/photo/[id]` routes. Per the doc, Lovable is the source of truth for the public UI, so the homepage `/` *is* the gallery. The DB still has the full category→location→photo hierarchy; only the **category** level is surfaced as filter tabs right now. Location-level browsing and per-photo URLs from the doc are **not** part of the Lovable design — can be added later if wanted. Adaptations made: Base UI `Dialog` (no `asChild`), real data mapped into Lovable's `Photo` shape, two corrupted lines in the paste fixed, lightbox corner shows a 2-digit index instead of the DB cuid. Public images use Lovable's plain `<img>` (has width/height, so no CLS) rather than `next/image`.
+| 11–12 | Next config + R2 bucket/CORS setup | ✅ Done |
+| 13 | Vercel deploy + domain | ✅ Live |
 
 ---
 
-## Files created so far
+## Key features implemented
+
+### Photo ordering
+- `Photo.position Int` column (replaced `featured`). Oldest photo = position 1, newest = N.
+- Gallery orders by `position DESC` (highest = top).
+- New uploads get `max(position) + 1` automatically.
+- Backfilled via `scripts/backfill-positions.mjs` (ran once).
+- **Schema applied via `prisma db push` (not migrate)** due to pre-existing drift. See migration note below.
+
+### Admin drag-and-drop reorder
+- `PATCH /api/admin/photos/reorder` accepts `{ ids: string[] }` in display order, writes positions in a transaction.
+- Admin grid uses dnd-kit (`rectSortingStrategy`), optimistic update with server rollback on error.
+- Thumbnail grid: `grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8`.
+
+### Featured flag — removed
+- Removed from schema, API, admin UI, and photo dialog.
+
+### Public gallery
+- **CSS Grid masonry**: `gridAutoRows: 4px`, `gap: 12px`, span computed via `ResizeObserver` on the `<img>` element (`contentRect.height`). Observing the image (not the button) fixes stale spans on column-count breakpoint crossings.
+- **Infinite scroll**: cursor-based (`position DESC`), 30 photos/page, `IntersectionObserver` sentinel with `rootMargin: 300px`. `isFirstRender` ref skips mount fetch (SSR data already loaded).
+- **Category filter**: re-fetches from server on change (complete filtered view, not client-side slice).
+- **Filter bar**: `sticky` (not `fixed`) so it shares the same horizontal reference as the nav and content — fixes left-edge misalignment caused by `scrollbar-gutter: stable both-edges` applying differently to fixed vs flow elements.
+
+### Lightbox
+- Swipe navigation (pointer events, 18% threshold).
+- **Continuous pinch-to-zoom** (1×–5×): native non-passive touch listeners, refs mirror state to avoid stale closures, zoom-toward-pinch-centre math. Double-tap toggles 1×/2×.
+- EXIF panel (slide up from bottom).
+
+### Image processing
+- **jimp** replaces sharp (sharp fails with `ERR_DLOPEN_FAILED` on Vercel serverless — no native deps).
+- Thumbnails generated on upload, stored in R2 alongside originals.
+
+---
+
+## Files (current structure)
 
 ```
 src/
-├─ proxy.ts                                  # admin route protection (Next 16 "proxy")
+├─ proxy.ts                          # admin route protection (Next 16 "proxy")
 ├─ lib/
-│  ├─ prisma.ts                              # Prisma 7 client via pg driver adapter
-│  ├─ r2.ts                                  # S3 client pointed at R2
-│  ├─ auth.ts                                # JWT session cookie helpers
-│  └─ utils.ts                               # shadcn cn()
+│  ├─ prisma.ts                      # Prisma 7 client via pg driver adapter
+│  ├─ r2.ts                          # S3 client → R2; thumbnail generation via jimp
+│  ├─ auth.ts                        # JWT session cookie helpers
+│  └─ utils.ts                       # shadcn cn()
+├─ config/site.ts                    # all branding (name, eyebrow, title, description)
+├─ types/photo.ts                    # Photo + Category types (public shape)
 ├─ components/
-│  ├─ ui/                                    # shadcn: button,input,label,card,badge,select,textarea,checkbox,dialog
-│  ├─ Nav.tsx  FilterBar.tsx  PhotoCard.tsx  Lightbox.tsx  Gallery.tsx   # Lovable public UI
-├─ data/photos.ts                           # public Photo type (Lovable shape)
+│  ├─ ui/                            # shadcn components
+│  ├─ gallery/
+│  │  ├─ gallery.tsx                 # main gallery (infinite scroll, filter, lightbox wiring)
+│  │  ├─ nav.tsx                     # sticky top nav
+│  │  ├─ filter-bar.tsx              # sticky category tabs
+│  │  ├─ photo-card.tsx              # masonry card (ResizeObserver span)
+│  │  ├─ lightbox.tsx                # full-screen lightbox + pinch zoom
+│  │  └─ content-guard.tsx           # (layout-level)
+│  └─ admin/
+│     ├─ photos-manager.tsx          # dnd-kit drag-to-reorder thumbnail grid
+│     ├─ photo-dialog.tsx            # upload + edit dialog
+│     └─ taxonomy-manager.tsx        # categories / locations / tags CRUD
 └─ app/
-   ├─ page.tsx                               # homepage = Lovable gallery, wired to DB
-   ├─ layout.tsx                             # Inter / Instrument Serif / JetBrains Mono fonts
-   ├─ globals.css                            # Lovable dark editorial theme (Tailwind v4)
+   ├─ page.tsx                       # homepage — SSR first 30 photos + categories
+   ├─ layout.tsx                     # fonts + global metadata
+   ├─ globals.css                    # dark editorial theme (Tailwind v4)
    ├─ admin/
-   │  ├─ page.tsx                            # dashboard + stats
-   │  ├─ login/page.tsx
-   │  ├─ upload/page.tsx                     # full upload flow
-   │  ├─ photos/page.tsx                     # manage / delete / feature
-   │  └─ categories/page.tsx                 # create categories & locations
+   │  ├─ page.tsx                    # admin dashboard
+   │  └─ login/page.tsx
    └─ api/
-      ├─ photos/route.ts                     # public photos (filter by category/location/tag/featured)
-      └─ admin/{login,presign,categories,locations,photos,photos/[id]}/route.ts
-prisma/schema.prisma                         # Category, Location, Photo, Tag, PhotoTag
-prisma.config.ts                             # loads .env.local; datasource url for CLI
-next.config.ts                               # R2 remote image hostname (from R2_PUBLIC_URL)
-.env.local                                   # all secrets (gitignored)
+      ├─ photos/route.ts             # public: cursor-paginated, category filter
+      └─ admin/
+         ├─ login / logout / presign / categories / locations / photos
+         ├─ photos/[id]/route.ts
+         └─ photos/reorder/route.ts  # PATCH — drag-and-drop position save
+prisma/schema.prisma                 # Category, Location, Photo, Tag, PhotoTag (position, no featured)
+scripts/backfill-positions.mjs       # one-time position backfill (already ran)
 ```
 
 ---
 
-## Key deviations from the original build doc (intentional, version-driven)
+## Key deviations from original build doc
 
-The doc predates these tool versions. These changes were required:
-
-1. **Prisma 7 — no `url` in schema.** Connection URL lives in `prisma.config.ts`; runtime uses a **driver adapter** (`@prisma/adapter-pg`). `src/lib/prisma.ts` does `new PrismaClient({ adapter: new PrismaPg({ connectionString }) })`. Imports still come from `@prisma/client`.
-2. **All env in `.env.local`.** `prisma.config.ts` calls `dotenv config({ path: ".env.local" })` so the Prisma CLI reads the same file the app uses.
-3. **Next.js 16 — `middleware` → `proxy`.** File is `src/proxy.ts`, exports `proxy()` (same matcher/behavior). The old `middleware` name is deprecated.
-4. **shadcn `base-nova` runs on Base UI.** `Select.onValueChange` gives `string | null`, so handlers coerce with `(v) => setX(v ?? "")`.
-5. **`next.config.ts`** derives the R2 image hostname from `R2_PUBLIC_URL` instead of hardcoding. `reactCompiler: true` (enabled by scaffold) kept.
-6. **`postinstall: prisma generate`** added for Vercel.
-7. **Data model decoupled (2026-06-16):** Category & Location are independent; `Photo.categoryId` required, `Photo.locationId` optional (`onDelete: SetNull`). Applied with **`prisma db push --accept-data-loss`**, NOT `prisma migrate` (migrate is interactive and this shell is non-interactive). ⚠️ **Migration drift:** `prisma/migrations/` still only has the old `init`; the live DB is ahead of it. Deploy is unaffected (same shared Neon DB; build doesn't run migrations). **Before any future `prisma migrate dev`, baseline the migrations** (data is disposable, so a reset is fine) or it'll complain about drift.
+1. **Prisma 7** — no `url` in schema; connection in `prisma.config.ts`; runtime uses driver adapter.
+2. **Next.js 16** — `middleware` → `proxy` (`src/proxy.ts`).
+3. **shadcn `base-nova` on Base UI** — `Select.onValueChange` gives `string | null`.
+4. **jimp instead of sharp** — sharp `ERR_DLOPEN_FAILED` on Vercel serverless.
+5. **`prisma db push` not `migrate dev`** — migrate is interactive; shell is non-interactive. ⚠️ Migration drift: `prisma/migrations/` is behind the live DB. Before any future `prisma migrate dev`, baseline or reset.
+6. **`postinstall: prisma generate`** — added for Vercel cold builds.
 
 ---
-
-## Branding / cloning
-
-All site branding is centralised in **`src/config/site.ts`** (`siteConfig`: `name`,
-`eyebrow`, `title`, `description`), consumed by `layout.tsx` (metadata), `Nav.tsx`, and
-`AdminHeader.tsx`. To rebrand: edit that file, **or** set `NEXT_PUBLIC_SITE_*` env vars
-(commented examples in `.env.local`) for a no-code, per-deployment override when cloning.
-These are build-time inlined → restart `npm run dev` / redeploy after changing them.
-Future option for non-technical owners: a DB settings table + admin Settings page.
 
 ## Accounts
 
 | Account | Needed for | Status |
 |---|---|---|
-| Neon (Postgres) | Phase 2 migration + runtime DB | ✅ Done — `eu-central-1`, migrated |
-| Cloudflare R2 | Photo storage (Phases 3/12) | ✅ Done — bucket `nicpic`, r2.dev public URL |
-| Vercel | Deploy (Phase 13) | ⏳ **Next** |
-
-### `.env.local` status
-- `ADMIN_COOKIE_SECRET` — ✅ generated
-- `ADMIN_PASSWORD` — ✅ set (currently `your-admin-password` — change anytime)
-- `DATABASE_URL` — ✅ Neon **direct** endpoint (no `-pooler`, no `channel_binding`); real secret lives only here, `.env` holds a placeholder
-- `R2_*` — ✅ all set (account id, access key, secret, bucket `nicpic`, r2.dev public URL); pipeline verified
-
-**Seed data:** one Category **Wildlife** + Location **Kruger National Park** were created during the DB smoke test (visible in `/admin/categories`). There's no category/location *delete* UI yet — manage via Prisma Studio if you want them gone.
+| Neon (Postgres) | DB | ✅ Live — eu-central-1 |
+| Cloudflare R2 | Photo storage | ✅ Live — bucket `nicpic`, r2.dev public URL |
+| Vercel | Hosting | ✅ Live |
 
 ---
 
 ## 👉 Next step
 
-**1. Verify a real upload in the browser** (everything's wired; this is the final functional check):
-   - Restart `npm run dev` (old server has stale env), open `/admin/login`, then `/admin/upload`.
-   - Upload an image under Wildlife → Kruger; confirm it appears on `/`.
+The app is production-ready for Nico's personal use. Likely next things when photo uploads resume (holiday):
 
-**2. Deploy to Vercel (Phase 13):**
-   - `vercel` (or connect the repo in the Vercel dashboard).
-   - Add **all** `.env.local` vars in Vercel → Project → Settings → Environment Variables.
-   - After deploy, add the live site origin to the **R2 CORS** allowlist (currently localhost only).
-   - Domain: point Afrihost DNS at Vercel (Phase 30). Optionally add an R2 custom photo domain.
-
-Note: R2 is set up with the **r2.dev** public URL (fine for now; rate-limited, not ideal for
-heavy production). A custom photo domain can be added later via Cloudflare.
+1. **Upload photos** via `/admin` — they'll get correct positions automatically.
+2. **Reorder** via drag-and-drop in admin if needed.
+3. **Monitor** Vercel function logs if anything breaks at scale.
 
 ---
 
-## ⏳ Backlog / open decisions
+## Backlog / open decisions
 
-- [x] Lovable export integrated; admin password set; **Neon DB + Cloudflare R2 configured & verified**.
-- **Featured = pin-to-top** (decided): featured photos sort first in the gallery, everything still shows. Implemented via `orderBy: [{ featured: "desc" }, { createdAt: "desc" }]` in `src/app/page.tsx` + `src/app/api/photos/route.ts`. (Homepage shows ALL photos, not just featured.)
-- [ ] **Infinite scroll** — planned for when the library grows. Today the homepage loads all photos at once (images already lazy-load). Add a cursor-paginated `/api/photos` + load-more-on-scroll in `Gallery.tsx`. ~30–45 min.
-- [ ] **Deploy (Phase 13):** push to Vercel, copy all `.env.local` vars into Vercel, add the live origin to R2 CORS, point Afrihost DNS at Vercel; optional R2 custom photo domain.
-- [ ] Optional: the doc's extra public routes (location browsing, per-photo URLs) — not part of Lovable's single-page design.
+- [ ] Per-photo public URLs (`/photo/[id]`) — not in Lovable design, can add later.
+- [ ] Location-level filter tabs — categories only for now.
+- [ ] R2 custom photo domain (currently r2.dev, rate-limited for heavy production use).
+- [ ] Admin password UI (currently set in `.env.local`).
+- [ ] `prisma migrate` baseline — low priority while DB is disposable.
