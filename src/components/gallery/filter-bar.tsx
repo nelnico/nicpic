@@ -43,7 +43,7 @@ export function FilterBar({ categories, active, onChange }: FilterBarProps) {
   const options: (Category | "All")[] = ["All", ...categories];
 
   return (
-    <div className="flex items-end justify-between border-b border-border pt-4 pb-6">
+    <div className="flex items-end justify-between border-b border-border pt-2 pb-3">
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {canScrollLeft && (
           <button
