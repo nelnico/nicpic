@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Photo } from "@/types/photo";
 
 const ROW_HEIGHT = 4;
-const GAP = 16;
+const GAP = 4;
 
 interface PhotoCardProps {
   photo: Photo;
@@ -19,12 +19,13 @@ export function PhotoCard({ photo, index, onSelect }: PhotoCardProps) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const update = () => {
-      const h = el.scrollHeight;
-      if (h > 0) setSpan(Math.ceil((h + GAP) / (ROW_HEIGHT + GAP)));
-    };
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
+    const img = el.querySelector("img");
+    if (!img) return;
+    const ro = new ResizeObserver((entries) => {
+      const h = entries[0]?.contentRect.height;
+      if (h && h > 0) setSpan(Math.ceil((h + GAP) / (ROW_HEIGHT + GAP)));
+    });
+    ro.observe(img);
     return () => ro.disconnect();
   }, []);
 

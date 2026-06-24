@@ -130,7 +130,7 @@ export function Gallery({ photos: initialPhotos, categories, initialNextCursor }
             <>
               <div
                 className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                style={{ gridAutoRows: "4px", gap: "16px" }}
+                style={{ gridAutoRows: "4px", gap: "4px" }}
               >
                 {photos.map((photo, i) => (
                   <PhotoCard
