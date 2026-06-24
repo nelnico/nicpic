@@ -249,7 +249,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
   };
 
   const endDrag = (e: React.PointerEvent) => {
-    if (scaleRef.current > 1) { panStart.current = null; return; }
+    if (scaleRef.current > 1) { panStart.current = null; hasMoved.current = false; return; }
     if (!dragging) return;
     setDragging(false);
     if (!hasMoved.current) { setDragX(0); return; }
