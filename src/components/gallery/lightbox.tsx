@@ -100,6 +100,7 @@ export function Lightbox({
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
   const [panning, setPanning] = useState(false);
+  const [pinchScale, setPinchScale] = useState(1);
 
   const go = useCallback(
     (dir: number) => {
@@ -175,6 +176,7 @@ export function Lightbox({
       if (!isPinching.current || e.touches.length !== 2) return;
       e.preventDefault();
       const ratio = touchDist(e.touches) / pinchStartDist.current;
+      setPinchScale(Math.max(0.3, Math.min(4, ratio)));
 
       if (!zoomed && ratio > 1.3) {
         const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -192,15 +194,18 @@ export function Lightbox({
         setZoomed(true);
         setPanX(Math.max(-maxX, Math.min(maxX, photo.width  * (0.5 - normX))));
         setPanY(Math.max(-maxY, Math.min(maxY, photo.height * (0.5 - normY))));
+        setPinchScale(1);
         isPinching.current = false;
       } else if (zoomed && ratio < 0.75) {
         closeZoom();
+        setPinchScale(1);
         isPinching.current = false;
       }
     }
 
     function onTouchEnd() {
       isPinching.current = false;
+      setPinchScale(1);
     }
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -372,11 +377,12 @@ export function Lightbox({
                 position: "absolute",
                 top: "50%",
                 left: "50%",
-                transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px))`,
+                transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${pinchScale})`,
                 maxWidth: "none",
                 maxHeight: "none",
                 userSelect: "none",
                 pointerEvents: "none",
+                transition: pinchScale !== 1 ? "none" : undefined,
               }}
             />
           </div>
@@ -410,7 +416,7 @@ export function Lightbox({
                 : "transform 350ms cubic-bezier(0.22, 1, 0.36, 1)",
             }}
           >
-            {photos.map((p) => (
+            {photos.map((p, i) => (
               <div
                 key={p.id}
                 className="flex h-full w-full shrink-0 items-center justify-center"
@@ -423,6 +429,9 @@ export function Lightbox({
                   height={p.height}
                   draggable={false}
                   className="max-h-full max-w-full select-none object-contain"
+                  style={i === index && pinchScale !== 1
+                    ? { transform: `scale(${pinchScale})`, transition: "none" }
+                    : undefined}
                 />
               </div>
             ))}
