@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Nav } from "@/components/gallery/nav";
 import { FilterBar } from "@/components/gallery/filter-bar";
-import { PhotoCard } from "@/components/gallery/photo-card";
 import { Lightbox } from "@/components/gallery/lightbox";
+import { Nav } from "@/components/gallery/nav";
+import { PhotoCard } from "@/components/gallery/photo-card";
 import type { Category, Photo } from "@/types/photo";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const LIMIT = 30;
 
@@ -18,71 +18,87 @@ interface GalleryProps {
 function mapApiPhoto(p: Record<string, unknown>): Photo {
   const category = p.category as { name: string };
   const location = p.location as { name: string } | null;
-  const tags     = p.tags as { tag: { name: string } }[];
-  const takenAt  = p.takenAt as string | null;
+  const tags = p.tags as { tag: { name: string } }[];
+  const takenAt = p.takenAt as string | null;
 
   return {
-    id:            p.id as string,
-    src:           p.r2Url as string,
-    thumbnail:     (p.r2ThumbUrl ?? p.r2Url) as string,
-    width:         p.width as number,
-    height:        p.height as number,
-    title:         (p.title ?? "") as string,
-    description:   (p.description ?? "") as string,
-    category:      category.name,
-    location:      location?.name ?? "",
-    where:         (p.takenWhere ?? "") as string,
-    date:          takenAt
-      ? new Date(takenAt).toLocaleString("en-US", { month: "long", year: "numeric" })
+    id: p.id as string,
+    src: p.r2Url as string,
+    thumbnail: (p.r2ThumbUrl ?? p.r2Url) as string,
+    width: p.width as number,
+    height: p.height as number,
+    title: (p.title ?? "") as string,
+    description: (p.description ?? "") as string,
+    category: category.name,
+    location: location?.name ?? "",
+    where: (p.takenWhere ?? "") as string,
+    date: takenAt
+      ? new Date(takenAt).toLocaleString("en-US", {
+          month: "long",
+          year: "numeric",
+        })
       : "",
-    tags:          tags.map((t) => t.tag.name),
-    cameraMake:    (p.cameraMake ?? "") as string,
-    cameraModel:   (p.cameraModel ?? "") as string,
-    iso:           (p.iso ?? "") as string,
-    aperture:      (p.aperture ?? "") as string,
-    shutterSpeed:  (p.shutterSpeed ?? "") as string,
-    focalLength:   (p.focalLength ?? "") as string,
+    tags: tags.map((t) => t.tag.name),
+    cameraMake: (p.cameraMake ?? "") as string,
+    cameraModel: (p.cameraModel ?? "") as string,
+    iso: (p.iso ?? "") as string,
+    aperture: (p.aperture ?? "") as string,
+    shutterSpeed: (p.shutterSpeed ?? "") as string,
+    focalLength: (p.focalLength ?? "") as string,
     focalLength35mm: (p.focalLength35mm ?? "") as string,
-    exposureMode:  (p.exposureMode ?? "") as string,
-    meteringMode:  (p.meteringMode ?? "") as string,
-    flash:         (p.flash ?? "") as string,
+    exposureMode: (p.exposureMode ?? "") as string,
+    meteringMode: (p.meteringMode ?? "") as string,
+    flash: (p.flash ?? "") as string,
   };
 }
 
-export function Gallery({ photos: initialPhotos, categories, initialNextCursor }: GalleryProps) {
-  const [photos,     setPhotos]     = useState<Photo[]>(initialPhotos);
-  const [cursor,     setCursor]     = useState<number | null>(initialNextCursor);
-  const [loading,    setLoading]    = useState(false);
-  const [active,     setActive]     = useState<Category | "All">("All");
+export function Gallery({
+  photos: initialPhotos,
+  categories,
+  initialNextCursor,
+}: GalleryProps) {
+  const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
+  const [cursor, setCursor] = useState<number | null>(initialNextCursor);
+  const [loading, setLoading] = useState(false);
+  const [active, setActive] = useState<Category | "All">("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const loadingRef  = useRef(false);
+  const loadingRef = useRef(false);
 
-  const fetchPhotos = useCallback(async (category: Category | "All", cur: number | null) => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ limit: String(LIMIT) });
-      if (category !== "All") params.set("category", category);
-      if (cur !== null) params.set("cursor", String(cur));
+  const fetchPhotos = useCallback(
+    async (category: Category | "All", cur: number | null) => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: String(LIMIT) });
+        if (category !== "All") params.set("category", category);
+        if (cur !== null) params.set("cursor", String(cur));
 
-      const res  = await fetch(`/api/photos?${params}`);
-      const data = await res.json() as { photos: Record<string, unknown>[]; nextCursor: number | null };
+        const res = await fetch(`/api/photos?${params}`);
+        const data = (await res.json()) as {
+          photos: Record<string, unknown>[];
+          nextCursor: number | null;
+        };
 
-      const mapped = data.photos.map(mapApiPhoto);
-      setPhotos(cur === null ? mapped : (prev) => [...prev, ...mapped]);
-      setCursor(data.nextCursor);
-    } finally {
-      loadingRef.current = false;
-      setLoading(false);
-    }
-  }, []);
+        const mapped = data.photos.map(mapApiPhoto);
+        setPhotos(cur === null ? mapped : (prev) => [...prev, ...mapped]);
+        setCursor(data.nextCursor);
+      } finally {
+        loadingRef.current = false;
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   // Reset and reload when category changes (skip on first render — SSR data is already loaded)
   const isFirstRender = useRef(true);
   useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     setPhotos([]);
     setCursor(null);
     fetchPhotos(active, null);
@@ -108,20 +124,24 @@ export function Gallery({ photos: initialPhotos, categories, initialNextCursor }
   }, [active, fetchPhotos]);
 
   const selectedIndex = photos.findIndex((p) => p.id === selectedId);
-  const selected      = selectedIndex >= 0 ? photos[selectedIndex] : null;
+  const selected = selectedIndex >= 0 ? photos[selectedIndex] : null;
 
   return (
     <div className="min-h-screen bg-background">
       <Nav />
 
-      <main className="mx-auto max-w-[1600px] px-6 md:px-10">
-        <div className="fixed top-[65px] left-0 right-0 z-20 bg-background/80 backdrop-blur-md pt-2">
-          <div className="mx-auto max-w-[1600px] px-6 md:px-10">
-            <FilterBar categories={categories} active={active} onChange={setActive} />
-          </div>
+      <div className="sticky top-12 z-20 bg-background/80 backdrop-blur-md">
+        <div className="mx-auto max-w-[1600px] px-6 md:px-10">
+          <FilterBar
+            categories={categories}
+            active={active}
+            onChange={setActive}
+          />
         </div>
+      </div>
 
-        <section id="work" className="pt-16 pb-10 md:pt-14">
+      <main className="mx-auto max-w-[1600px] px-6 md:px-10">
+        <section id="work" className="pb-10">
           {photos.length === 0 && !loading ? (
             <div className="mt-10 flex min-h-[40vh] items-center justify-center">
               <p className="eyebrow text-muted-foreground">No photos yet</p>

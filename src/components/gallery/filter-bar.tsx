@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Category } from "@/types/photo";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface FilterBarProps {
   categories: Category[];
@@ -43,7 +43,7 @@ export function FilterBar({ categories, active, onChange }: FilterBarProps) {
   const options: (Category | "All")[] = ["All", ...categories];
 
   return (
-    <div className="flex items-end justify-between border-b border-border pt-2 pb-3">
+    <div className="flex items-end justify-between border-b border-t border-border pt-2 pb-3">
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {canScrollLeft && (
           <button

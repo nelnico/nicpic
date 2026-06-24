@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { siteConfig } from "@/config/site";
+import { useState } from "react";
 
 export function Nav() {
   const [open, setOpen] = useState(false);
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-5 md:px-10">
+    <header className="sticky top-0 z-30  border-border bg-background/80 backdrop-blur-md">
+      <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-3 md:px-10">
         <a
           href="/"
           className="flex items-baseline gap-2 transition-opacity hover:opacity-70"
@@ -29,7 +29,7 @@ export function Nav() {
               Contact
             </DialogTrigger>
           </nav>
-          <DialogContent className="flex min-h-[200px] items-center justify-center">
+          <DialogContent className="flex min-h-50 items-center justify-center">
             <p className="text-4xl font-bold tracking-tight">TSEK!</p>
           </DialogContent>
         </Dialog>
