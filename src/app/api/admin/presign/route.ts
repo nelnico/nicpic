@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   const ext = filename.split(".").pop();
   const uuid = randomUUID();
   const key = `photos/${uuid}.${ext}`;
-  const thumbKey = `photos/${uuid}-thumb.webp`;
+  const thumbKey = `photos/${uuid}-thumb.jpg`;
 
   const command = new PutObjectCommand({
     Bucket: R2_BUCKET,

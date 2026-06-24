@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import sharp from "sharp";
+import { Jimp } from "jimp";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 import { verifySession } from "@/lib/auth";
@@ -50,11 +50,12 @@ export async function POST(request: NextRequest) {
     if (!imageRes.ok) throw new Error(`R2 fetch returned ${imageRes.status}`);
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
 
-    // Resize full image to max 2560px on longest edge, re-encode as JPEG q85
-    const { data: fullBuffer, info: fullInfo } = await sharp(imageBuffer)
-      .resize({ width: 2560, height: 2560, fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 92 })
-      .toBuffer({ resolveWithObject: true });
+    // Resize full image to max 2560px on longest edge, re-encode as JPEG q92
+    const fullImg = await Jimp.fromBuffer(imageBuffer);
+    if (fullImg.width > 2560 || fullImg.height > 2560) {
+      fullImg.scaleToFit({ w: 2560, h: 2560 });
+    }
+    const fullBuffer = await fullImg.getBuffer("image/jpeg", { quality: 92 });
 
     await r2Client.send(new PutObjectCommand({
       Bucket: R2_BUCKET,
@@ -63,20 +64,21 @@ export async function POST(request: NextRequest) {
       ContentType: "image/jpeg",
     }));
 
-    processedWidth  = fullInfo.width;
-    processedHeight = fullInfo.height;
+    processedWidth  = fullImg.width;
+    processedHeight = fullImg.height;
 
-    // Thumbnail from already-resized buffer
-    const thumbBuffer = await sharp(fullBuffer)
-      .resize({ width: 800, withoutEnlargement: true })
-      .webp({ quality: 75 })
-      .toBuffer();
+    // Thumbnail — max 800px wide, JPEG q80
+    const thumbImg = await Jimp.fromBuffer(fullBuffer);
+    if (thumbImg.width > 800) {
+      thumbImg.scaleToFit({ w: 800, h: 99999 });
+    }
+    const thumbBuffer = await thumbImg.getBuffer("image/jpeg", { quality: 80 });
 
     await r2Client.send(new PutObjectCommand({
       Bucket: R2_BUCKET,
       Key: thumbKey as string,
       Body: thumbBuffer,
-      ContentType: "image/webp",
+      ContentType: "image/jpeg",
     }));
 
     r2ThumbUrl       = `${R2_PUBLIC_URL}/${thumbKey}`;
