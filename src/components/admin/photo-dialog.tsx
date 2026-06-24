@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +29,6 @@ export type EditablePhoto = {
   locationId: string;
   takenAt: string;
   takenWhere: string;
-  featured: boolean;
   tags: string[];
   r2Url: string;
 };
@@ -121,7 +119,6 @@ export function PhotoDialog({
   const [takenAt, setTakenAt] = useState(photo?.takenAt ?? "");
   const [takenWhere, setTakenWhere] = useState(photo?.takenWhere ?? "");
   const [tags, setTags] = useState(photo?.tags.join(", ") ?? "");
-  const [featured, setFeatured] = useState(photo?.featured ?? false);
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -134,7 +131,6 @@ export function PhotoDialog({
       locationId: locationId === "none" ? null : locationId,
       takenAt: takenAt || null,
       takenWhere: takenWhere || null,
-      featured,
       tags: tags
         .split(",")
         .map((t) => t.trim())
@@ -259,14 +255,6 @@ export function PhotoDialog({
               className="mx-auto max-h-48 rounded-md object-contain"
             />
           )}
-
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={featured}
-              onCheckedChange={(v) => setFeatured(v === true)}
-            />
-            Featured (pin to top of the gallery)
-          </label>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

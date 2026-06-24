@@ -19,8 +19,7 @@ async function getGalleryData(): Promise<{
         location: true,
         tags: { include: { tag: true } },
       },
-      // Featured photos pinned to the top, then newest first.
-      orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+      orderBy: { position: "desc" },
     });
 
     const photos: Photo[] = rows.map((p) => ({

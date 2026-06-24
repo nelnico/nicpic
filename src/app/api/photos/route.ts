@@ -6,11 +6,8 @@ export async function GET(request: NextRequest) {
   const categorySlug = searchParams.get("category");
   const locationSlug = searchParams.get("location");
   const tag = searchParams.get("tag");
-  const featuredOnly = searchParams.get("featured") === "true";
-
   const photos = await prisma.photo.findMany({
     where: {
-      ...(featuredOnly && { featured: true }),
       ...(categorySlug && { category: { slug: categorySlug } }),
       ...(locationSlug && { location: { slug: locationSlug } }),
       ...(tag && { tags: { some: { tag: { slug: tag } } } }),
@@ -20,8 +17,7 @@ export async function GET(request: NextRequest) {
       location: true,
       tags: { include: { tag: true } },
     },
-    // Featured photos pinned to the top, then newest first.
-    orderBy: [{ featured: "desc" }, { createdAt: "desc" }],
+    orderBy: { position: "desc" },
   });
 
   return NextResponse.json(photos);

@@ -1,7 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Star } from "lucide-react";
+import { GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,7 +35,7 @@ type ApiPhoto = {
   description: string | null;
   r2Url: string;
   r2ThumbUrl: string | null;
-  featured: boolean;
+  position: number;
   categoryId: string;
   locationId: string | null;
   takenAt: string | null;
@@ -37,10 +52,59 @@ function toEditable(p: ApiPhoto): EditablePhoto {
     locationId: p.locationId ?? "none",
     takenAt: p.takenAt ? p.takenAt.slice(0, 10) : "",
     takenWhere: p.takenWhere ?? "",
-    featured: p.featured,
     tags: p.tags.map((t) => t.tag.name),
     r2Url: p.r2Url,
   };
+}
+
+function SortablePhoto({
+  photo,
+  onEdit,
+}: {
+  photo: ApiPhoto;
+  onEdit: (p: ApiPhoto) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: photo.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="group relative">
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        className="absolute right-0.5 top-0.5 z-10 cursor-grab rounded bg-background/70 p-0.5 backdrop-blur-sm active:cursor-grabbing"
+        aria-label="Drag to reorder"
+      >
+        <GripVertical className="h-3 w-3 text-muted-foreground" />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onEdit(photo)}
+        className="block w-full overflow-hidden rounded-md border border-border"
+        title="Edit"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photo.r2ThumbUrl ?? photo.r2Url}
+          alt={photo.title ?? "photo"}
+          className="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      </button>
+
+      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+        {photo.title || "Untitled"}
+      </p>
+    </div>
+  );
 }
 
 export function PhotosManager() {
@@ -51,7 +115,10 @@ export function PhotosManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EditablePhoto | null>(null);
   const [createKey, setCreateKey] = useState(0);
-  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
 
   async function loadPhotos() {
     const data = await fetch("/api/photos").then((r) => r.json());
@@ -82,17 +149,26 @@ export function PhotosManager() {
     setDialogOpen(true);
   }
 
-  async function toggleFeatured(p: ApiPhoto) {
-    setBusyId(p.id);
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = photos.findIndex((p) => p.id === active.id);
+    const newIndex = photos.findIndex((p) => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(photos, oldIndex, newIndex);
+    setPhotos(reordered);
+
     try {
-      const res = await fetch(`/api/admin/photos/${p.id}`, {
+      const res = await fetch("/api/admin/photos/reorder", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ featured: !p.featured }),
+        body: JSON.stringify({ ids: reordered.map((p) => p.id) }),
       });
-      if (res.ok) await loadPhotos();
-    } finally {
-      setBusyId(null);
+      if (!res.ok) throw new Error("Reorder failed");
+    } catch {
+      await loadPhotos();
     }
   }
 
@@ -114,44 +190,26 @@ export function PhotosManager() {
             No photos yet — hit <strong>Upload</strong> to add one.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {photos.map((p) => (
-              <div key={p.id} className="group relative">
-                <button
-                  type="button"
-                  onClick={() => openEdit(p)}
-                  className="block w-full overflow-hidden rounded-md border border-border"
-                  title="Edit"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={p.r2ThumbUrl ?? p.r2Url}
-                    alt={p.title ?? "photo"}
-                    className="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={photos.map((p) => p.id)}
+              strategy={rectSortingStrategy}
+            >
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+                {photos.map((p) => (
+                  <SortablePhoto
+                    key={p.id}
+                    photo={p}
+                    onEdit={openEdit}
                   />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleFeatured(p)}
-                  disabled={busyId === p.id}
-                  aria-label="Toggle featured"
-                  title={p.featured ? "Featured (click to unfeature)" : "Mark featured"}
-                  className="absolute left-2 top-2 rounded-full bg-background/70 p-1 backdrop-blur-sm transition-colors hover:bg-background"
-                >
-                  <Star
-                    className={`h-4 w-4 ${
-                      p.featured
-                        ? "fill-foreground text-foreground"
-                        : "text-muted-foreground"
-                    }`}
-                  />
-                </button>
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {p.title || "Untitled"}
-                </p>
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         )}
       </CardContent>
 

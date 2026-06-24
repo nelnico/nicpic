@@ -35,7 +35,6 @@ export async function POST(request: NextRequest) {
     thumbKey,
     width,
     height,
-    featured,
     tags,
   } = body;
 
@@ -100,6 +99,9 @@ export async function POST(request: NextRequest) {
     tagConnections.push({ tagId: tag.id });
   }
 
+  const { _max } = await prisma.photo.aggregate({ _max: { position: true } });
+  const nextPosition = (_max.position ?? 0) + 1;
+
   const photo = await prisma.photo.create({
     data: {
       title,
@@ -124,7 +126,7 @@ export async function POST(request: NextRequest) {
       r2ThumbUrl: r2ThumbUrl,
       width:  processedWidth,
       height: processedHeight,
-      featured: featured ?? false,
+      position: nextPosition,
       tags: {
         create: tagConnections,
       },

@@ -62,7 +62,7 @@ model Photo {
   r2ThumbUrl   String?
   width        Int
   height       Int
-  featured     Boolean    @default(false)
+  position     Int        @default(0)
   tags         PhotoTag[]
   createdAt    DateTime   @default(now())
 }

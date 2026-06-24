@@ -29,8 +29,7 @@ export async function DELETE(
   return NextResponse.json({ ok: true });
 }
 
-// Partial update — handles both the simple featured toggle and full metadata edits.
-// Only fields present in the body are changed.
+// Partial update — only fields present in the body are changed.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -59,7 +58,6 @@ export async function PATCH(
   if ("flash" in body) data.flash = body.flash || null;
   if ("takenAt" in body) data.takenAt = body.takenAt ? new Date(body.takenAt) : null;
   if ("takenWhere" in body) data.takenWhere = body.takenWhere || null;
-  if ("featured" in body) data.featured = body.featured;
 
   // Replace tags only when an array is provided.
   if (Array.isArray(body.tags)) {
