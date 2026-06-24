@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Photo } from "@/types/photo";
 
 const ROW_HEIGHT = 4;
-const GAP = 4;
+const GAP = 12;
 
 interface PhotoCardProps {
   photo: Photo;
