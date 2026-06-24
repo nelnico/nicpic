@@ -46,9 +46,7 @@ function PhotoDetails({ photo }: { photo: Photo }) {
       {photo.description && (
         <p className="mb-5 text-sm leading-relaxed">{photo.description}</p>
       )}
-
       {camera && <p className="mb-3 text-sm">{camera}</p>}
-
       {grid.length > 0 && (
         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
           {grid.map(([label, value]) => (
@@ -56,7 +54,6 @@ function PhotoDetails({ photo }: { photo: Photo }) {
           ))}
         </div>
       )}
-
       {photo.tags.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
           {photo.tags.map((t) => (
@@ -68,144 +65,146 @@ function PhotoDetails({ photo }: { photo: Photo }) {
   );
 }
 
-export function Lightbox({
-  photos,
-  index,
-  onClose,
-  onIndexChange,
-}: LightboxProps) {
+export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProps) {
   const photo = photos[index];
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const stageRef    = useRef<HTMLDivElement>(null);
-  const trackRef    = useRef<HTMLDivElement>(null);
-  const overlayRef  = useRef<HTMLDivElement>(null);
-  const startX      = useRef(0);
-  const hasMoved    = useRef(false);
-  const hasPanned   = useRef(false);
-  const lastTap     = useRef(0);
-  const pinchStartDist = useRef(0);
-  const isPinching     = useRef(false);
-  const zoomStart  = useRef<{
-    x: number;
-    y: number;
-    panX: number;
-    panY: number;
-  } | null>(null);
+  const stageRef     = useRef<HTMLDivElement>(null);
+  const trackRef     = useRef<HTMLDivElement>(null);
 
-  const [dragX, setDragX] = useState(0);
-  const [dragging, setDragging] = useState(false);
+  // Swipe
+  const startX   = useRef(0);
+  const hasMoved = useRef(false);
+  const lastTap  = useRef(0);
+
+  // Pinch
+  const pinchStartDist  = useRef(0);
+  const pinchStartScale = useRef(1);
+  const pinchCenter     = useRef({ x: 0, y: 0 });
+  const isPinching      = useRef(false);
+
+  // Pan (single-finger while zoomed)
+  const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+
+  // Mirror zoom state in refs so event handlers always see current values
+  const scaleRef = useRef(1);
+  const panXRef  = useRef(0);
+  const panYRef  = useRef(0);
+
+  const [dragX,       setDragX]       = useState(0);
+  const [dragging,    setDragging]    = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [zoomed, setZoomed] = useState(false);
-  const [panX, setPanX] = useState(0);
-  const [panY, setPanY] = useState(0);
-  const [panning, setPanning] = useState(false);
-  const [pinchScale, setPinchScale] = useState(1);
+  const [scale,       setScale]       = useState(1);
+  const [panX,        setPanX]        = useState(0);
+  const [panY,        setPanY]        = useState(0);
+  const [pinchActive, setPinchActive] = useState(false);
+
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  useEffect(() => { panXRef.current  = panX;  }, [panX]);
+  useEffect(() => { panYRef.current  = panY;  }, [panY]);
+
+  const resetZoom = useCallback(() => {
+    scaleRef.current = 1; panXRef.current = 0; panYRef.current = 0;
+    setScale(1); setPanX(0); setPanY(0);
+  }, []);
 
   const go = useCallback(
-    (dir: number) => {
-      const next = (index + dir + photos.length) % photos.length;
-      onIndexChange(next);
-    },
+    (dir: number) => onIndexChange((index + dir + photos.length) % photos.length),
     [index, photos.length, onIndexChange],
   );
 
-  const openZoom = useCallback(() => {
-    setZoomed(true);
-    setPanX(0);
-    setPanY(0);
-  }, []);
-  const closeZoom = useCallback(() => {
-    setZoomed(false);
-    setPanX(0);
-    setPanY(0);
-  }, []);
   const handleKey = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (zoomed) {
-          closeZoom();
-          return;
-        }
-        if (detailsOpen) {
-          setDetailsOpen(false);
-          return;
-        }
+        if (scaleRef.current > 1) { resetZoom(); return; }
+        if (detailsOpen) { setDetailsOpen(false); return; }
         onClose();
       }
-      if (!zoomed) {
-        if (e.key === "ArrowLeft") go(-1);
+      if (scaleRef.current === 1) {
+        if (e.key === "ArrowLeft")  go(-1);
         if (e.key === "ArrowRight") go(1);
       }
     },
-    [onClose, go, detailsOpen, zoomed, closeZoom],
+    [onClose, go, detailsOpen, resetZoom],
   );
 
   useEffect(() => {
     document.addEventListener("keydown", handleKey);
-    const prevOverflow = document.body.style.overflow;
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", handleKey);
-      document.body.style.overflow = prevOverflow;
-    };
+    return () => { document.removeEventListener("keydown", handleKey); document.body.style.overflow = prev; };
   }, [handleKey]);
 
-  // Pinch-to-zoom
+  useEffect(() => { setDetailsOpen(false); resetZoom(); }, [index, resetZoom]);
+
+  // Compute pan clamp bounds for a given scale
+  function panBounds(s: number) {
+    const rect = stageRef.current?.getBoundingClientRect();
+    if (!rect) return { maxX: 0, maxY: 0 };
+    const cw = rect.width, ch = rect.height;
+    const a = photo.width / photo.height;
+    const rw = a > cw / ch ? cw : ch * a;
+    const rh = a > cw / ch ? cw / a : ch;
+    return { maxX: Math.max(0, (rw * s - cw) / 2), maxY: Math.max(0, (rh * s - ch) / 2) };
+  }
+
+  // Pinch-to-zoom via native touch events (need non-passive for preventDefault)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
-    function touchDist(touches: TouchList) {
-      return Math.hypot(
-        touches[1].clientX - touches[0].clientX,
-        touches[1].clientY - touches[0].clientY,
-      );
+    function dist(t: TouchList) {
+      return Math.hypot(t[1].clientX - t[0].clientX, t[1].clientY - t[0].clientY);
     }
 
     function onTouchStart(e: TouchEvent) {
-      if (e.touches.length === 2) {
-        isPinching.current = true;
-        pinchStartDist.current = touchDist(e.touches);
-        setDragging(false);
-        setDragX(0);
-      }
+      if (e.touches.length !== 2) return;
+      isPinching.current    = true;
+      setPinchActive(true);
+      pinchStartDist.current  = dist(e.touches);
+      pinchStartScale.current = scaleRef.current;
+      const rect = (stageRef.current ?? el)!.getBoundingClientRect();
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      pinchCenter.current = { x: mx - rect.left - rect.width / 2, y: my - rect.top - rect.height / 2 };
+      panStart.current = null;
+      setDragging(false);
+      setDragX(0);
     }
 
     function onTouchMove(e: TouchEvent) {
       if (!isPinching.current || e.touches.length !== 2) return;
       e.preventDefault();
-      const ratio = touchDist(e.touches) / pinchStartDist.current;
-      setPinchScale(Math.max(0.3, Math.min(4, ratio)));
 
-      if (!zoomed && ratio > 1.3) {
-        const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-        const my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const ratio    = dist(e.touches) / pinchStartDist.current;
+      const newScale = Math.max(1, Math.min(5, pinchStartScale.current * ratio));
+      const change   = newScale / scaleRef.current;
+      const { x: cx, y: cy } = pinchCenter.current;
+
+      // Pan so the point under the pinch centre stays fixed on screen
+      let nx = cx + (panXRef.current - cx) * change;
+      let ny = cy + (panYRef.current - cy) * change;
+
+      const { maxX, maxY } = (() => {
         const rect = (stageRef.current ?? el)!.getBoundingClientRect();
-        const cw = rect.width;
-        const ch = rect.height;
-        const imgAspect = photo.width / photo.height;
-        const renderedW = imgAspect > cw / ch ? cw : ch * imgAspect;
-        const renderedH = imgAspect > cw / ch ? cw / imgAspect : ch;
-        const normX = (mx - rect.left - (cw - renderedW) / 2) / renderedW;
-        const normY = (my - rect.top  - (ch - renderedH) / 2) / renderedH;
-        const maxX = Math.max(0, (photo.width  - cw) / 2);
-        const maxY = Math.max(0, (photo.height - ch) / 2);
-        setZoomed(true);
-        setPanX(Math.max(-maxX, Math.min(maxX, photo.width  * (0.5 - normX))));
-        setPanY(Math.max(-maxY, Math.min(maxY, photo.height * (0.5 - normY))));
-        setPinchScale(1);
-        isPinching.current = false;
-      } else if (zoomed && ratio < 0.75) {
-        closeZoom();
-        setPinchScale(1);
-        isPinching.current = false;
-      }
+        const cw = rect.width, ch = rect.height;
+        const a = photo.width / photo.height;
+        const rw = a > cw / ch ? cw : ch * a;
+        const rh = a > cw / ch ? cw / a : ch;
+        return { maxX: Math.max(0, (rw * newScale - cw) / 2), maxY: Math.max(0, (rh * newScale - ch) / 2) };
+      })();
+
+      nx = Math.max(-maxX, Math.min(maxX, nx));
+      ny = Math.max(-maxY, Math.min(maxY, ny));
+
+      scaleRef.current = newScale; panXRef.current = nx; panYRef.current = ny;
+      setScale(newScale); setPanX(nx); setPanY(ny);
     }
 
     function onTouchEnd() {
       isPinching.current = false;
-      setPinchScale(1);
+      setPinchActive(false);
+      if (scaleRef.current < 1.05) resetZoom();
     }
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -216,121 +215,73 @@ export function Lightbox({
       el.removeEventListener("touchmove",  onTouchMove);
       el.removeEventListener("touchend",   onTouchEnd);
     };
-  }, [zoomed, photo, closeZoom]);
+  }, [photo, resetZoom]);
 
-  // Reset zoom and details when photo changes
-  useEffect(() => {
-    setDetailsOpen(false);
-    closeZoom();
-  }, [index, closeZoom]);
-
-  // ── Swipe handlers (normal mode) ────────────────────────────────────────────
+  // ── Pointer handlers (swipe when scale=1, pan when scale>1) ─────────────────
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (isPinching.current) return;
+    if (scaleRef.current > 1) {
+      panStart.current = { x: e.clientX, y: e.clientY, panX: panXRef.current, panY: panYRef.current };
+      return;
+    }
     startX.current = e.clientX;
     hasMoved.current = false;
     setDragging(true);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragging || isPinching.current) return;
+    if (isPinching.current) return;
+    if (scaleRef.current > 1) {
+      if (!panStart.current) return;
+      hasMoved.current = true;
+      const { maxX, maxY } = panBounds(scaleRef.current);
+      const nx = Math.max(-maxX, Math.min(maxX, panStart.current.panX + (e.clientX - panStart.current.x)));
+      const ny = Math.max(-maxY, Math.min(maxY, panStart.current.panY + (e.clientY - panStart.current.y)));
+      panXRef.current = nx; panYRef.current = ny;
+      setPanX(nx); setPanY(ny);
+      return;
+    }
+    if (!dragging) return;
     const dx = e.clientX - startX.current;
     if (!hasMoved.current && Math.abs(dx) > 5) hasMoved.current = true;
     setDragX(dx);
   };
 
   const endDrag = (e: React.PointerEvent) => {
+    if (scaleRef.current > 1) { panStart.current = null; return; }
     if (!dragging) return;
     setDragging(false);
-
-    if (!hasMoved.current) {
-      setDragX(0);
-      return;
-    }
-
-    const delta = e.clientX - startX.current;
-    const threshold = Math.min(
-      120,
-      (trackRef.current?.clientWidth ?? 600) * 0.18,
-    );
+    if (!hasMoved.current) { setDragX(0); return; }
+    const delta     = e.clientX - startX.current;
+    const threshold = Math.min(120, (trackRef.current?.clientWidth ?? 600) * 0.18);
     if (delta <= -threshold) go(1);
     else if (delta >= threshold) go(-1);
     setDragX(0);
   };
 
-  // ── Pan handlers (zoom mode) ─────────────────────────────────────────────
-
-  const zoomPointerDown = (e: React.PointerEvent) => {
-    e.preventDefault();
-    hasPanned.current = false;
-    zoomStart.current = { x: e.clientX, y: e.clientY, panX, panY };
-    setPanning(true);
-  };
-
-  const zoomPointerMove = (e: React.PointerEvent) => {
-    if (!zoomStart.current) return;
-    const newX = zoomStart.current.panX + (e.clientX - zoomStart.current.x);
-    const newY = zoomStart.current.panY + (e.clientY - zoomStart.current.y);
-    if (Math.abs(newX - (zoomStart.current?.panX ?? 0)) > 5 ||
-        Math.abs(newY - (zoomStart.current?.panY ?? 0)) > 5) {
-      hasPanned.current = true;
-    }
-    if (overlayRef.current) {
-      const { clientWidth: cw, clientHeight: ch } = overlayRef.current;
-      const maxX = Math.max(0, (photo.width  - cw) / 2);
-      const maxY = Math.max(0, (photo.height - ch) / 2);
-      setPanX(Math.max(-maxX, Math.min(maxX, newX)));
-      setPanY(Math.max(-maxY, Math.min(maxY, newY)));
-    } else {
-      setPanX(newX);
-      setPanY(newY);
-    }
-  };
-
-  const zoomPointerUp = () => {
-    zoomStart.current = null;
-    setPanning(false);
-  };
-
-  // Manual double-tap: two clicks within 300 ms, with no drag in between.
+  // Double-tap: zoom to 2× centred on tap point, or reset if already zoomed
   const handleTrackClick = (e: React.MouseEvent) => {
     if (hasMoved.current) return;
     const now = Date.now();
     if (now - lastTap.current < 300) {
-      // Centre the zoom on the tapped pixel.
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const cw = rect.width;
-      const ch = rect.height;
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
-
-      // Rendered image size under object-contain rules
-      const imgAspect = photo.width / photo.height;
-      const renderedW = imgAspect > cw / ch ? cw : ch * imgAspect;
-      const renderedH = imgAspect > cw / ch ? cw / imgAspect : ch;
-
-      // Normalised click position within the rendered image (0–1)
-      const normX = (clickX - (cw - renderedW) / 2) / renderedW;
-      const normY = (clickY - (ch - renderedH) / 2) / renderedH;
-
-      // Pan that centres the clicked natural pixel, then clamp to bounds
-      const maxX = Math.max(0, (photo.width  - cw) / 2);
-      const maxY = Math.max(0, (photo.height - ch) / 2);
-      setZoomed(true);
-      setPanX(Math.max(-maxX, Math.min(maxX, photo.width  * (0.5 - normX))));
-      setPanY(Math.max(-maxY, Math.min(maxY, photo.height * (0.5 - normY))));
+      if (scaleRef.current > 1) {
+        resetZoom();
+      } else {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const cx = e.clientX - rect.left - rect.width / 2;
+        const cy = e.clientY - rect.top  - rect.height / 2;
+        const s  = 2;
+        const { maxX, maxY } = panBounds(s);
+        const nx = Math.max(-maxX, Math.min(maxX, -cx * (s - 1)));
+        const ny = Math.max(-maxY, Math.min(maxY, -cy * (s - 1)));
+        scaleRef.current = s; panXRef.current = nx; panYRef.current = ny;
+        setScale(s); setPanX(nx); setPanY(ny);
+      }
       lastTap.current = 0;
     } else {
       lastTap.current = now;
     }
-  };
-
-  const handleOverlayClick = () => {
-    if (hasPanned.current) return;
-    const now = Date.now();
-    if (now - lastTap.current < 300) { closeZoom(); lastTap.current = 0; }
-    else lastTap.current = now;
   };
 
   const translate = `calc(${-index * 100}% + ${dragX}px)`;
@@ -355,39 +306,6 @@ export function Lightbox({
 
       {/* Stage */}
       <div ref={stageRef} className="relative flex min-h-0 flex-1 items-center md:px-16">
-        {/* Zoom overlay — covers stage, blocks swipe, enables pan */}
-        {zoomed && (
-          <div
-            ref={overlayRef}
-            className={`absolute inset-0 z-20 touch-none overflow-hidden bg-background ${panning ? "cursor-grabbing" : "cursor-grab"}`}
-            onPointerDown={zoomPointerDown}
-            onPointerMove={zoomPointerMove}
-            onPointerUp={zoomPointerUp}
-            onPointerCancel={zoomPointerUp}
-            onClick={handleOverlayClick}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photo.src}
-              alt={photo.title}
-              width={photo.width}
-              height={photo.height}
-              draggable={false}
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: `translate(calc(-50% + ${panX}px), calc(-50% + ${panY}px)) scale(${pinchScale})`,
-                maxWidth: "none",
-                maxHeight: "none",
-                userSelect: "none",
-                pointerEvents: "none",
-                transition: pinchScale !== 1 ? "none" : undefined,
-              }}
-            />
-          </div>
-        )}
-
         <button
           type="button"
           onClick={() => go(-1)}
@@ -400,6 +318,7 @@ export function Lightbox({
         {/* Sliding track */}
         <div
           className="relative h-full w-full touch-pan-y overflow-hidden"
+          style={{ cursor: scale > 1 ? "grab" : "default" }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
@@ -411,16 +330,11 @@ export function Lightbox({
             className="flex h-full"
             style={{
               transform: `translate3d(${translate}, 0, 0)`,
-              transition: dragging
-                ? "none"
-                : "transform 350ms cubic-bezier(0.22, 1, 0.36, 1)",
+              transition: dragging ? "none" : "transform 350ms cubic-bezier(0.22, 1, 0.36, 1)",
             }}
           >
             {photos.map((p, i) => (
-              <div
-                key={p.id}
-                className="flex h-full w-full shrink-0 items-center justify-center"
-              >
+              <div key={p.id} className="flex h-full w-full shrink-0 items-center justify-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={p.src}
@@ -429,8 +343,12 @@ export function Lightbox({
                   height={p.height}
                   draggable={false}
                   className="max-h-full max-w-full select-none object-contain"
-                  style={i === index && pinchScale !== 1
-                    ? { transform: `scale(${pinchScale})`, transition: "none" }
+                  style={i === index
+                    ? {
+                        transform: `translate(${panX}px, ${panY}px) scale(${scale})`,
+                        transition: pinchActive ? "none" : "transform 0.2s ease-out",
+                        willChange: "transform",
+                      }
                     : undefined}
                 />
               </div>
@@ -469,9 +387,7 @@ export function Lightbox({
               {photo.where ? ` · ${photo.where}` : ""}
             </p>
             {photo.title && (
-              <h2 className="mt-1 font-serif text-2xl leading-tight">
-                {photo.title}
-              </h2>
+              <h2 className="mt-1 font-serif text-2xl leading-tight">{photo.title}</h2>
             )}
           </div>
           <ChevronDown
