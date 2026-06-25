@@ -1,7 +1,7 @@
 # Build Progress — Nico's Photo Portfolio
 
 > **Purpose:** single source of truth for where this build is, so work can resume after any restart.
-> **Last updated:** 2026-06-24
+> **Last updated:** 2026-06-25
 
 ---
 
@@ -76,6 +76,14 @@ The gallery is a fully functional photo portfolio with:
 - Admin grid uses dnd-kit (`rectSortingStrategy`), optimistic update with server rollback on error.
 - Thumbnail grid: `grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8`.
 
+### Albums
+- `Album` model: name, slug, description, locationId (optional), coverPhotoId (unused in UI — collage used instead), createdAt, updatedAt.
+- `Photo.albumId` optional FK → Album (onDelete: SetNull).
+- Admin: Albums card in Library section — create/edit/delete. Upload dialog shows optional album picker when albums exist.
+- Public: `/albums` listing (album cards with 2×2 photo collage if 5+ photos, single photo if fewer), `/albums/[slug]` detail page with full masonry gallery + lightbox.
+- Nav lives in `app/(public)/layout.tsx` — shared across all public pages. Admin has its own layout.
+- `focalLength35mm` removed from schema, API, dialog, types, gallery, lightbox.
+
 ### Featured flag — removed
 - Removed from schema, API, admin UI, and photo dialog.
 
@@ -122,19 +130,28 @@ src/
 │     ├─ photo-dialog.tsx            # upload + edit dialog
 │     └─ taxonomy-manager.tsx        # categories / locations / tags CRUD
 └─ app/
-   ├─ page.tsx                       # homepage — SSR first 30 photos + categories
    ├─ layout.tsx                     # fonts + global metadata
    ├─ globals.css                    # dark editorial theme (Tailwind v4)
+   ├─ (public)/
+   │  ├─ layout.tsx                  # shared Nav for all public pages
+   │  ├─ page.tsx                    # homepage — SSR first 30 photos + categories
+   │  └─ albums/
+   │     ├─ page.tsx                 # album listing with photo collage cards
+   │     └─ [slug]/page.tsx          # album detail — masonry gallery + lightbox
    ├─ admin/
+   │  ├─ layout.tsx                  # AdminHeader wrapper
    │  ├─ page.tsx                    # admin dashboard
    │  └─ login/page.tsx
    └─ api/
       ├─ photos/route.ts             # public: cursor-paginated, category filter
       └─ admin/
          ├─ login / logout / presign / categories / locations / photos
+         ├─ albums/route.ts          # GET list, POST create
+         ├─ albums/[id]/route.ts     # PATCH, DELETE
+         ├─ albums/[id]/photos/route.ts  # GET photos in album
          ├─ photos/[id]/route.ts
          └─ photos/reorder/route.ts  # PATCH — drag-and-drop position save
-prisma/schema.prisma                 # Category, Location, Photo, Tag, PhotoTag (position, no featured)
+prisma/schema.prisma                 # Category, Location, Photo, Album, Tag, PhotoTag
 scripts/backfill-positions.mjs       # one-time position backfill (already ran)
 ```
 
