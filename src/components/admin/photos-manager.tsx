@@ -40,6 +40,7 @@ type ApiPhoto = {
   locationId: string | null;
   takenAt: string | null;
   takenWhere: string | null;
+  albumId: string | null;
   tags: { tag: { name: string } }[];
 };
 
@@ -52,6 +53,7 @@ function toEditable(p: ApiPhoto): EditablePhoto {
     locationId: p.locationId ?? "none",
     takenAt: p.takenAt ? p.takenAt.slice(0, 10) : "",
     takenWhere: p.takenWhere ?? "",
+    albumId: p.albumId ?? "none",
     tags: p.tags.map((t) => t.tag.name),
     r2Url: p.r2Url,
   };
@@ -111,6 +113,7 @@ export function PhotosManager() {
   const [photos, setPhotos] = useState<ApiPhoto[]>([]);
   const [categories, setCategories] = useState<Opt[]>([]);
   const [locations, setLocations] = useState<Opt[]>([]);
+  const [albums, setAlbums] = useState<Opt[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EditablePhoto | null>(null);
@@ -134,6 +137,7 @@ export function PhotosManager() {
         .catch(() => set([]));
     get("categories", setCategories);
     get("locations", setLocations);
+    get("albums", setAlbums);
     loadPhotos()
       .catch(() => setPhotos([]))
       .finally(() => setLoading(false));
@@ -221,6 +225,7 @@ export function PhotosManager() {
         photo={editing}
         categories={categories}
         locations={locations}
+        albums={albums}
         onSaved={loadPhotos}
       />
     </Card>

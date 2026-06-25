@@ -27,6 +27,7 @@ export type EditablePhoto = {
   description: string;
   categoryId: string;
   locationId: string;
+  albumId: string;
   takenAt: string;
   takenWhere: string;
   tags: string[];
@@ -47,7 +48,6 @@ type ExifData = {
   aperture?: string;
   shutterSpeed?: string;
   focalLength?: string;
-  focalLength35mm?: string;
   exposureMode?: string;
   meteringMode?: string;
   flash?: string;
@@ -79,7 +79,6 @@ async function extractExif(file: File): Promise<ExifData> {
     if (raw.FNumber) out.aperture = `f/${raw.FNumber}`;
     if (raw.ExposureTime) out.shutterSpeed = formatShutterSpeed(raw.ExposureTime as number);
     if (raw.FocalLength) out.focalLength = `${raw.FocalLength}mm`;
-    if (raw.FocalLengthIn35mmFilm) out.focalLength35mm = `${raw.FocalLengthIn35mmFilm}mm`;
     if (raw.ExposureMode != null) out.exposureMode = EXPOSURE_MODE[raw.ExposureMode as number] ?? String(raw.ExposureMode);
     if (raw.MeteringMode != null) out.meteringMode = METERING_MODE[raw.MeteringMode as number] ?? String(raw.MeteringMode);
     // Flash is a bitmask; bit 0 = fired
@@ -101,6 +100,7 @@ export function PhotoDialog({
   photo,
   categories,
   locations,
+  albums,
   onSaved,
 }: {
   open: boolean;
@@ -108,12 +108,14 @@ export function PhotoDialog({
   photo: EditablePhoto | null;
   categories: Opt[];
   locations: Opt[];
+  albums: Opt[];
   onSaved: () => void;
 }) {
   const isEdit = photo !== null;
 
   const [categoryId, setCategoryId] = useState(photo?.categoryId ?? "");
   const [locationId, setLocationId] = useState(photo?.locationId ?? "none");
+  const [albumId, setAlbumId] = useState(photo?.albumId ?? "none");
   const [title, setTitle] = useState(photo?.title ?? "");
   const [description, setDescription] = useState(photo?.description ?? "");
   const [takenAt, setTakenAt] = useState(photo?.takenAt ?? "");
@@ -129,6 +131,7 @@ export function PhotoDialog({
       description: description || null,
       categoryId,
       locationId: locationId === "none" ? null : locationId,
+      albumId: albumId === "none" ? null : albumId,
       takenAt: takenAt || null,
       takenWhere: takenWhere || null,
       tags: tags
@@ -305,6 +308,27 @@ export function PhotoDialog({
               </Select>
             </div>
           </div>
+
+          {albums.length > 0 && (
+            <div className="space-y-2">
+              <Label>Album</Label>
+              <Select
+                items={{ none: "No album", ...Object.fromEntries(albums.map((a) => [a.id, a.name])) }}
+                value={albumId}
+                onValueChange={(v) => setAlbumId(v ?? "none")}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No album</SelectItem>
+                  {albums.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

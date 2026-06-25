@@ -1,5 +1,6 @@
 import { PhotosManager } from "@/components/admin/photos-manager";
 import { TaxonomyManager } from "@/components/admin/taxonomy-manager";
+import { AlbumsManager } from "@/components/admin/albums-manager";
 
 export default function AdminHomePage() {
   return (
@@ -23,6 +24,7 @@ export default function AdminHomePage() {
             kind="locations"
             placeholder="e.g. Cape Town"
           />
+          <AlbumsManager />
         </div>
       </div>
     </div>

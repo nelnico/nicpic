@@ -22,14 +22,7 @@ function Cell({ label, value }: { label: string; value: string }) {
 
 function PhotoDetails({ photo }: { photo: Photo }) {
   const camera = photo.cameraModel || photo.cameraMake;
-  const focalLength = [
-    photo.focalLength,
-    photo.focalLength35mm && photo.focalLength35mm !== photo.focalLength
-      ? `${photo.focalLength35mm} equiv.`
-      : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const focalLength = photo.focalLength;
 
   const grid: [string, string][] = [
     ["Aperture", photo.aperture],

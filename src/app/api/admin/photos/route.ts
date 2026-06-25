@@ -24,7 +24,6 @@ export async function POST(request: NextRequest) {
     aperture,
     shutterSpeed,
     focalLength,
-    focalLength35mm,
     exposureMode,
     meteringMode,
     flash,
@@ -36,6 +35,7 @@ export async function POST(request: NextRequest) {
     width,
     height,
     tags,
+    albumId,
   } = body;
 
   // Fetch the uploaded original from R2, resize it, and generate a thumbnail.
@@ -114,7 +114,6 @@ export async function POST(request: NextRequest) {
       aperture: aperture || null,
       shutterSpeed: shutterSpeed || null,
       focalLength: focalLength || null,
-      focalLength35mm: focalLength35mm || null,
       exposureMode: exposureMode || null,
       meteringMode: meteringMode || null,
       flash: flash || null,
@@ -127,6 +126,7 @@ export async function POST(request: NextRequest) {
       width:  processedWidth,
       height: processedHeight,
       position: nextPosition,
+      albumId: albumId || null,
       tags: {
         create: tagConnections,
       },

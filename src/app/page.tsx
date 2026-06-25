@@ -30,7 +30,6 @@ function mapPhoto(p: Awaited<ReturnType<typeof fetchInitial>>["photos"][number])
     aperture: p.aperture ?? "",
     shutterSpeed: p.shutterSpeed ?? "",
     focalLength: p.focalLength ?? "",
-    focalLength35mm: p.focalLength35mm ?? "",
     exposureMode: p.exposureMode ?? "",
     meteringMode: p.meteringMode ?? "",
     flash: p.flash ?? "",

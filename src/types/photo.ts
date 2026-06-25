@@ -26,7 +26,6 @@ export interface Photo {
   aperture: string;
   shutterSpeed: string;
   focalLength: string;
-  focalLength35mm: string;
   exposureMode: string;
   meteringMode: string;
   flash: string;

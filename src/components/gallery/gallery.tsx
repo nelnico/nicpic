@@ -13,6 +13,7 @@ interface GalleryProps {
   photos: Photo[];
   categories: Category[];
   initialNextCursor: number | null;
+  albumMode?: boolean;
 }
 
 function mapApiPhoto(p: Record<string, unknown>): Photo {
@@ -45,7 +46,6 @@ function mapApiPhoto(p: Record<string, unknown>): Photo {
     aperture: (p.aperture ?? "") as string,
     shutterSpeed: (p.shutterSpeed ?? "") as string,
     focalLength: (p.focalLength ?? "") as string,
-    focalLength35mm: (p.focalLength35mm ?? "") as string,
     exposureMode: (p.exposureMode ?? "") as string,
     meteringMode: (p.meteringMode ?? "") as string,
     flash: (p.flash ?? "") as string,
@@ -56,6 +56,7 @@ export function Gallery({
   photos: initialPhotos,
   categories,
   initialNextCursor,
+  albumMode = false,
 }: GalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [cursor, setCursor] = useState<number | null>(initialNextCursor);
@@ -106,6 +107,7 @@ export function Gallery({
 
   // Infinite scroll sentinel
   useEffect(() => {
+    if (albumMode) return;
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
     const observer = new IntersectionObserver(
@@ -130,15 +132,17 @@ export function Gallery({
     <div className="min-h-screen bg-background">
       <Nav />
 
-      <div className="sticky top-12 z-20 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto max-w-[1600px] px-6 md:px-10">
-          <FilterBar
-            categories={categories}
-            active={active}
-            onChange={setActive}
-          />
+      {!albumMode && (
+        <div className="sticky top-12 z-20 bg-background/80 backdrop-blur-md">
+          <div className="mx-auto max-w-[1600px] px-6 md:px-10">
+            <FilterBar
+              categories={categories}
+              active={active}
+              onChange={setActive}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <main className="mx-auto max-w-[1600px] px-6 md:px-10">
         <section id="work" className="pb-10">
