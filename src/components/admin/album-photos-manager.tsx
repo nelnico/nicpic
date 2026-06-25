@@ -53,7 +53,7 @@ export function AlbumPhotosManager({
     setAddOpen(true);
     setAllLoading(true);
     try {
-      const res = await fetch("/api/photos?limit=0").then((r) => r.json());
+      const res = await fetch("/api/photos?limit=0&noAlbum=true").then((r) => r.json());
       const list: Photo[] = Array.isArray(res) ? res : (res?.photos ?? []);
       setAllPhotos(list);
     } finally {
@@ -92,9 +92,7 @@ export function AlbumPhotosManager({
   }
 
   const albumPhotoIds = new Set(photos.map((p) => p.id));
-  const available = allPhotos.filter(
-    (p) => !albumPhotoIds.has(p.id) && !p.albumId
-  );
+  const available = allPhotos.filter((p) => !albumPhotoIds.has(p.id));
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">

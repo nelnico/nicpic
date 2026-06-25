@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   const categoryName = searchParams.get("category");
   const locationSlug = searchParams.get("location");
   const tag          = searchParams.get("tag");
+  const noAlbum      = searchParams.get("noAlbum") === "true";
   const cursorParam  = searchParams.get("cursor");
   const limitParam   = searchParams.get("limit");
 
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest) {
       ...(categoryName  && { category: { name: categoryName } }),
       ...(locationSlug  && { location: { slug: locationSlug } }),
       ...(tag           && { tags: { some: { tag: { slug: tag } } } }),
+      ...(noAlbum       && { albumId: null }),
     },
     include: {
       category: true,
