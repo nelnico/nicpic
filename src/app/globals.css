@@ -94,6 +94,9 @@
   * {
     @apply border-border outline-ring/50;
   }
+  button, a, [role="button"] {
+    cursor: pointer;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;

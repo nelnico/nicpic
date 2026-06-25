@@ -190,7 +190,7 @@ export function AlbumsManager() {
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-base font-medium">Albums</h2>
-        <Button size="sm" onClick={openNew}>Add</Button>
+        <Button size="sm" variant="outline" onClick={openNew}>Add</Button>
       </div>
 
       {albums.length === 0 ? (

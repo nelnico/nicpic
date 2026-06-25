@@ -11,7 +11,7 @@ export default function AdminHomePage() {
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">
           Library
         </h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <TaxonomyManager
             title="Categories"
             noun="category"
