@@ -76,6 +76,11 @@ The gallery is a fully functional photo portfolio with:
 - Admin grid uses dnd-kit (`rectSortingStrategy`), optimistic update with server rollback on error.
 - Thumbnail grid: `grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8`.
 
+### Upload photo dialog enhancements
+- **+ buttons on selects**: Category, Location, and Album selects each have a small `+` button that opens a quick-add dialog. Validates (not empty, not duplicate), saves to API, auto-selects the new item.
+- **Date picker**: `When taken` field replaced with a Base UI Popover + react-day-picker calendar (`src/components/ui/date-picker.tsx`). Stores as `YYYY-MM-DD` string, same as before.
+- `react-day-picker` added as a dependency.
+
 ### Albums
 - `Album` model: name, slug, description, locationId (optional), coverPhotoId (unused in UI — collage used instead), createdAt, updatedAt.
 - `Photo.albumId` optional FK → Album (onDelete: SetNull).
