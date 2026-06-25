@@ -208,28 +208,20 @@ export function AlbumsManager() {
                     className="h-10 w-10 rounded object-cover"
                   />
                 )}
-                <div>
-                  <span className="font-medium">{a.name}</span>
-                  {a.location && (
-                    <span className="ml-2 text-muted-foreground">{a.location.name}</span>
-                  )}
-                  <span className="ml-2 text-muted-foreground">({a._count.photos})</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link
-                  href={`/admin/albums/${a.id}`}
-                  className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                >
-                  Photos
-                </Link>
                 <button
-                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  className="text-left hover:underline underline-offset-2"
                   onClick={() => openEdit(a)}
                 >
-                  Edit
+                  <span className="font-medium">{a.name}</span>
+                  <span className="ml-2 text-muted-foreground">({a._count.photos})</span>
                 </button>
               </div>
+              <Link
+                href={`/admin/albums/${a.id}`}
+                className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                Photos
+              </Link>
             </li>
           ))}
         </ul>

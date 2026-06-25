@@ -129,18 +129,15 @@ export function TaxonomyManager({
                 key={item.id}
                 className="flex items-center justify-between py-2"
               >
-                <span className="text-sm">
+                <button
+                  type="button"
+                  onClick={() => openEdit(item)}
+                  className="text-sm text-left hover:underline underline-offset-2"
+                >
                   {item.name}{" "}
                   <span className="text-muted-foreground">
                     ({item._count.photos})
                   </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => openEdit(item)}
-                  className="text-xs text-muted-foreground underline transition-colors hover:text-foreground"
-                >
-                  Edit
                 </button>
               </li>
             ))}
