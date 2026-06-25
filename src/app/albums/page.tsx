@@ -36,7 +36,7 @@ export default async function AlbumsPage() {
                     <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
                       No photos
                     </div>
-                  ) : photos.length === 1 ? (
+                  ) : album._count.photos < 5 ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={photos[0].r2ThumbUrl ?? photos[0].r2Url}
@@ -45,19 +45,15 @@ export default async function AlbumsPage() {
                     />
                   ) : (
                     <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-px bg-border">
-                      {[0, 1, 2, 3].map((i) =>
-                        photos[i] ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            key={photos[i].id}
-                            src={photos[i].r2ThumbUrl ?? photos[i].r2Url}
-                            alt=""
-                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div key={i} className="bg-muted" />
-                        )
-                      )}
+                      {[0, 1, 2, 3].map((i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={photos[i].id}
+                          src={photos[i].r2ThumbUrl ?? photos[i].r2Url}
+                          alt=""
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ))}
                     </div>
                   )}
                 </div>
