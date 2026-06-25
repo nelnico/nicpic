@@ -81,6 +81,19 @@ The gallery is a fully functional photo portfolio with:
 - **Date picker**: `When taken` field replaced with a Base UI Popover + react-day-picker calendar (`src/components/ui/date-picker.tsx`). Stores as `YYYY-MM-DD` string, same as before.
 - `react-day-picker` added as a dependency.
 
+### Admin album photo management
+- `/admin/albums/[id]` — server-rendered page showing all photos in an album as a thumbnail grid.
+- Hover a photo → X button removes it from the album (`PATCH albumId: null`).
+- **Add photos** button opens a modal fetching only unassigned photos (`/api/photos?limit=0&noAlbum=true`). Multi-select with checkmark overlay, batch-assigns on confirm.
+- `AlbumsManager` each album row has a **Photos** link navigating to this page.
+- `noAlbum=true` query param added to `/api/photos` — adds `WHERE albumId IS NULL` at DB level.
+
+### UX polish
+- Categories/Locations: clicking the name opens the edit dialog (no separate Edit button).
+- Albums: same — click name to edit; location removed from the row display.
+- Library grid: `lg:grid-cols-3` fills full width with 3 panels.
+- `cursor: pointer` added globally in `globals.css` for all `button`, `a`, and `[role="button"]` elements.
+
 ### Albums
 - `Album` model: name, slug, description, locationId (optional), coverPhotoId (unused in UI — collage used instead), createdAt, updatedAt.
 - `Photo.albumId` optional FK → Album (onDelete: SetNull).
@@ -122,7 +135,7 @@ src/
 ├─ config/site.ts                    # all branding (name, eyebrow, title, description)
 ├─ types/photo.ts                    # Photo + Category types (public shape)
 ├─ components/
-│  ├─ ui/                            # shadcn components
+│  ├─ ui/                            # shadcn components (incl. date-picker.tsx)
 │  ├─ gallery/
 │  │  ├─ gallery.tsx                 # main gallery (infinite scroll, filter, lightbox wiring)
 │  │  ├─ nav.tsx                     # sticky top nav
@@ -132,8 +145,10 @@ src/
 │  │  └─ content-guard.tsx           # (layout-level)
 │  └─ admin/
 │     ├─ photos-manager.tsx          # dnd-kit drag-to-reorder thumbnail grid
-│     ├─ photo-dialog.tsx            # upload + edit dialog
-│     └─ taxonomy-manager.tsx        # categories / locations / tags CRUD
+│     ├─ photo-dialog.tsx            # upload + edit dialog (+ quick-add dialogs, date picker)
+│     ├─ album-photos-manager.tsx    # per-album photo grid (remove + add)
+│     ├─ albums-manager.tsx          # albums CRUD card + Photos link per album
+│     └─ taxonomy-manager.tsx        # categories / locations CRUD
 └─ app/
    ├─ layout.tsx                     # fonts + global metadata
    ├─ globals.css                    # dark editorial theme (Tailwind v4)
@@ -146,7 +161,8 @@ src/
    ├─ admin/
    │  ├─ layout.tsx                  # AdminHeader wrapper
    │  ├─ page.tsx                    # admin dashboard
-   │  └─ login/page.tsx
+   │  ├─ login/page.tsx
+   │  └─ albums/[id]/page.tsx        # per-album photo management (server component)
    └─ api/
       ├─ photos/route.ts             # public: cursor-paginated, category filter
       └─ admin/
