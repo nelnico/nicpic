@@ -16,6 +16,7 @@ type Photo = {
   title: string | null;
   r2Url: string;
   r2ThumbUrl: string | null;
+  albumId?: string | null;
 };
 
 type Album = {
@@ -91,7 +92,9 @@ export function AlbumPhotosManager({
   }
 
   const albumPhotoIds = new Set(photos.map((p) => p.id));
-  const available = allPhotos.filter((p) => !albumPhotoIds.has(p.id));
+  const available = allPhotos.filter(
+    (p) => !albumPhotoIds.has(p.id) && !p.albumId
+  );
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
