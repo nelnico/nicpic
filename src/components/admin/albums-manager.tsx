@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -215,12 +216,20 @@ export function AlbumsManager() {
                   <span className="ml-2 text-muted-foreground">({a._count.photos})</span>
                 </div>
               </div>
-              <button
-                className="text-muted-foreground underline-offset-2 hover:underline"
-                onClick={() => openEdit(a)}
-              >
-                Edit
-              </button>
+              <div className="flex items-center gap-3">
+                <Link
+                  href={`/admin/albums/${a.id}`}
+                  className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  Photos
+                </Link>
+                <button
+                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  onClick={() => openEdit(a)}
+                >
+                  Edit
+                </button>
+              </div>
             </li>
           ))}
         </ul>
