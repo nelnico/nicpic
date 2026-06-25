@@ -16,8 +16,8 @@ export default async function AlbumsPage() {
   });
 
   return (
-    <main className="mx-auto max-w-[1600px] px-6 py-12 md:px-10">
-      <h1 className="mb-8 text-2xl font-semibold tracking-tight">Albums</h1>
+    <main className="mx-auto max-w-[1600px] px-6 py-8 md:px-10">
+      <p className="mb-6 text-sm text-muted-foreground">Albums</p>
 
       {albums.length === 0 ? (
         <p className="text-muted-foreground">No albums yet.</p>
