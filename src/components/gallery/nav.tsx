@@ -23,6 +23,12 @@ export function Nav() {
 
         <Dialog open={open} onOpenChange={setOpen}>
           <nav className="flex items-center gap-7 md:gap-10">
+            <a
+              href="/albums"
+              className="eyebrow text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Albums
+            </a>
             {/* Base UI's DialogTrigger renders a <button>; apply Lovable's
                 classes directly (Base UI has no `asChild`). */}
             <DialogTrigger className="eyebrow cursor-pointer border-none bg-transparent text-muted-foreground transition-colors hover:text-foreground">
