@@ -7,7 +7,7 @@ import { useState } from "react";
 export function Nav() {
   const [open, setOpen] = useState(false);
   return (
-    <header className="sticky top-0 z-30  border-border bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1600px] items-center justify-between px-6 py-3 md:px-10">
         <a
           href="/"
