@@ -67,14 +67,8 @@ export default async function AlbumPage({
     <main>
       <Nav />
 
-      <div className="mx-auto max-w-[1600px] px-6 pt-8 pb-2 md:px-10">
-        <h1 className="text-2xl font-semibold tracking-tight">{album.name}</h1>
-        {album.location && (
-          <p className="mt-1 text-sm text-muted-foreground">{album.location.name}</p>
-        )}
-        {album.description && (
-          <p className="mt-2 text-sm text-muted-foreground">{album.description}</p>
-        )}
+      <div className="mx-auto max-w-[1600px] px-6 pt-6 pb-2 md:px-10">
+        <p className="text-sm text-muted-foreground">{album.name}</p>
       </div>
 
       <Gallery
