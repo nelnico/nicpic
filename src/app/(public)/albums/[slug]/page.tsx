@@ -65,7 +65,7 @@ export default async function AlbumPage({
 
   return (
     <main>
-      <div className="mx-auto max-w-[1600px] px-6 pt-4 pb-0 md:px-10">
+      <div className="mx-auto max-w-[1600px] px-6 pt-4 pb-3 md:px-10">
         <p className="text-sm text-muted-foreground">
           <Link href="/albums" className="hover:text-foreground transition-colors">Albums</Link>
           <span className="mx-1.5">›</span>
