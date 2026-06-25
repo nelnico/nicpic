@@ -2,7 +2,6 @@
 
 import { FilterBar } from "@/components/gallery/filter-bar";
 import { Lightbox } from "@/components/gallery/lightbox";
-import { Nav } from "@/components/gallery/nav";
 import { PhotoCard } from "@/components/gallery/photo-card";
 import type { Category, Photo } from "@/types/photo";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -14,7 +13,6 @@ interface GalleryProps {
   categories: Category[];
   initialNextCursor: number | null;
   albumMode?: boolean;
-  hideNav?: boolean;
 }
 
 function mapApiPhoto(p: Record<string, unknown>): Photo {
@@ -58,7 +56,6 @@ export function Gallery({
   categories,
   initialNextCursor,
   albumMode = false,
-  hideNav = false,
 }: GalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [cursor, setCursor] = useState<number | null>(initialNextCursor);
@@ -132,7 +129,6 @@ export function Gallery({
 
   return (
     <div className="min-h-screen bg-background">
-      {!hideNav && <Nav />}
 
       {!albumMode && (
         <div className="sticky top-12 z-20 bg-background/80 backdrop-blur-md">

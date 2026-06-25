@@ -16,7 +16,7 @@ export default async function AlbumsPage() {
   });
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12">
+    <main className="mx-auto max-w-[1600px] px-6 py-12 md:px-10">
       <h1 className="mb-8 text-2xl font-semibold tracking-tight">Albums</h1>
 
       {albums.length === 0 ? (

@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Gallery } from "@/components/gallery/gallery";
-import { Nav } from "@/components/gallery/nav";
 import type { Photo } from "@/types/photo";
 
 function formatMonthYear(d: Date): string {
@@ -65,9 +64,7 @@ export default async function AlbumPage({
 
   return (
     <main>
-      <Nav />
-
-      <div className="mx-auto max-w-[1600px] px-6 pt-6 pb-2 md:px-10">
+      <div className="mx-auto max-w-[1600px] px-6 pt-4 pb-0 md:px-10">
         <p className="text-sm text-muted-foreground">{album.name}</p>
       </div>
 
@@ -76,7 +73,6 @@ export default async function AlbumPage({
         categories={categories}
         initialNextCursor={null}
         albumMode
-        hideNav
       />
     </main>
   );
