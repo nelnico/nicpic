@@ -5,7 +5,11 @@ export default async function AlbumsPage() {
   const albums = await prisma.album.findMany({
     include: {
       location: true,
-      coverPhoto: { select: { r2ThumbUrl: true, r2Url: true } },
+      photos: {
+        take: 4,
+        orderBy: { position: "desc" },
+        select: { id: true, r2ThumbUrl: true, r2Url: true },
+      },
       _count: { select: { photos: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -20,7 +24,7 @@ export default async function AlbumsPage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {albums.map((album) => {
-            const thumb = album.coverPhoto?.r2ThumbUrl ?? album.coverPhoto?.r2Url;
+            const photos = album.photos;
             return (
               <Link
                 key={album.id}
@@ -28,16 +32,32 @@ export default async function AlbumsPage() {
                 className="group block overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-foreground/30"
               >
                 <div className="aspect-square w-full overflow-hidden bg-muted">
-                  {thumb ? (
+                  {photos.length === 0 ? (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                      No photos
+                    </div>
+                  ) : photos.length === 1 ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={thumb}
+                      src={photos[0].r2ThumbUrl ?? photos[0].r2Url}
                       alt={album.name}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                      No cover
+                    <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-px bg-border">
+                      {[0, 1, 2, 3].map((i) =>
+                        photos[i] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={photos[i].id}
+                            src={photos[i].r2ThumbUrl ?? photos[i].r2Url}
+                            alt=""
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div key={i} className="bg-muted" />
+                        )
+                      )}
                     </div>
                   )}
                 </div>
