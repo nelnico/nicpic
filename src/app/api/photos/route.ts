@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
       ...(locationSlug  && { location: { slug: locationSlug } }),
       ...(tag           && { tags: { some: { tag: { slug: tag } } } }),
       ...(noAlbum       && { albumId: null }),
+      // never expose photos from private albums on the public gallery
+      NOT: { album: { isPrivate: true } },
     },
     include: {
       category: true,

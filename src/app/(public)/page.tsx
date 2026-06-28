@@ -45,12 +45,13 @@ async function fetchInitial() {
 
   const [rows, catRows] = await Promise.all([
     prisma.photo.findMany({
+      where: { NOT: { album: { isPrivate: true } } },
       include,
       orderBy: { position: "desc" },
       take: INITIAL_LIMIT + 1,
     }),
     prisma.category.findMany({
-      where: { photos: { some: {} } },
+      where: { photos: { some: { NOT: { album: { isPrivate: true } } } } },
       select: { name: true },
       orderBy: { name: "asc" },
     }),
