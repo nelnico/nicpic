@@ -29,9 +29,10 @@ interface AlbumsPageProps {
   albums: Album[];
   categories: string[];
   isAdmin?: boolean;
+  unlockedAlbumIds?: string[];
 }
 
-function AlbumCover({ album, isAdmin }: { album: Album; isAdmin?: boolean }) {
+function AlbumCover({ album, isAdmin, unlocked }: { album: Album; isAdmin?: boolean; unlocked?: boolean }) {
   const photos = album.photos.filter((p) => p.r2ThumbUrl || p.r2Url);
   const inner =
     photos.length === 0 ? (
@@ -59,7 +60,7 @@ function AlbumCover({ album, isAdmin }: { album: Album; isAdmin?: boolean }) {
       </div>
     );
 
-  if (album.isPrivate && !isAdmin) {
+  if (album.isPrivate && !isAdmin && !unlocked) {
     return (
       <div className="relative aspect-square w-full overflow-hidden bg-muted">
         <div className="absolute inset-0" style={{ filter: "blur(2px)" }}>{inner}</div>
@@ -149,9 +150,10 @@ function CodePromptDialog({
   );
 }
 
-export function AlbumsPage({ albums, categories, isAdmin }: AlbumsPageProps) {
+export function AlbumsPage({ albums, categories, isAdmin, unlockedAlbumIds = [] }: AlbumsPageProps) {
   const [active, setActive] = useState<string | "All">("All");
   const [promptAlbum, setPromptAlbum] = useState<Album | null>(null);
+  const unlockedSet = new Set(unlockedAlbumIds);
 
   const visible =
     active === "All"
@@ -178,7 +180,7 @@ export function AlbumsPage({ albums, categories, isAdmin }: AlbumsPageProps) {
             {visible.map((album) => {
               const card = (
                 <div className="group block overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-foreground/30">
-                  <AlbumCover album={album} isAdmin={isAdmin} />
+                  <AlbumCover album={album} isAdmin={isAdmin} unlocked={unlockedSet.has(album.id)} />
                   <div className="p-3">
                     <p className="font-medium leading-tight">{album.name}</p>
                     {album.location && (
@@ -189,7 +191,7 @@ export function AlbumsPage({ albums, categories, isAdmin }: AlbumsPageProps) {
                 </div>
               );
 
-              if (album.isPrivate && !isAdmin) {
+              if (album.isPrivate && !isAdmin && !unlockedSet.has(album.id)) {
                 return (
                   <button
                     key={album.id}
