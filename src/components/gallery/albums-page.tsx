@@ -32,13 +32,13 @@ interface AlbumsPageProps {
 }
 
 function AlbumCover({ album, isAdmin }: { album: Album; isAdmin?: boolean }) {
-  const photos = album.photos;
+  const photos = album.photos.filter((p) => p.r2ThumbUrl || p.r2Url);
   const inner =
     photos.length === 0 ? (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
         No photos
       </div>
-    ) : album._count.photos < 5 ? (
+    ) : photos.length < 4 ? (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={photos[0].r2ThumbUrl ?? photos[0].r2Url}
@@ -47,11 +47,11 @@ function AlbumCover({ album, isAdmin }: { album: Album; isAdmin?: boolean }) {
       />
     ) : (
       <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-px bg-border">
-        {[0, 1, 2, 3].map((i) => (
+        {photos.slice(0, 4).map((p) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            key={photos[i].id}
-            src={photos[i].r2ThumbUrl ?? photos[i].r2Url}
+            key={p.id}
+            src={p.r2ThumbUrl ?? p.r2Url}
             alt=""
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
