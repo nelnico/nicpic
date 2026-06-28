@@ -128,6 +128,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
     return () => { document.removeEventListener("keydown", handleKey); document.body.style.overflow = prev; };
   }, [handleKey]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setDetailsOpen(false); resetZoom(); }, [index, resetZoom]);
 
   // Compute pan clamp bounds for a given scale

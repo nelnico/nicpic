@@ -58,7 +58,7 @@ export function Gallery({
   albumMode = false,
 }: GalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
-  const [cursor, setCursor] = useState<number | null>(initialNextCursor);
+  const [, setCursor] = useState<number | null>(initialNextCursor);
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState<Category | "All">("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -122,7 +122,7 @@ export function Gallery({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [active, fetchPhotos]);
+  }, [active, fetchPhotos, albumMode]);
 
   const selectedIndex = photos.findIndex((p) => p.id === selectedId);
   const selected = selectedIndex >= 0 ? photos[selectedIndex] : null;

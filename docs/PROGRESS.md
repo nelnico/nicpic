@@ -1,7 +1,7 @@
 # Build Progress — Nico's Photo Portfolio
 
 > **Purpose:** single source of truth for where this build is, so work can resume after any restart.
-> **Last updated:** 2026-06-28
+> **Last updated:** 2026-06-28 (lint clean, build green)
 
 ---
 
@@ -15,7 +15,7 @@ The gallery is a fully functional photo portfolio with:
 - **Storage** — Cloudflare R2 (upload via presigned URL, thumbnails generated server-side with jimp).
 - **DB** — Neon Postgres via Prisma 7 + `@prisma/adapter-pg`.
 
-**To resume dev:** `npm run dev` — no stale env issues, no migrations pending.
+**To resume dev:** `npm run dev` — no stale env issues, no migrations pending. Lint is clean (`npm run lint` passes with 0 errors).
 
 ---
 
@@ -116,6 +116,8 @@ The gallery is a fully functional photo portfolio with:
 - Public `/albums`: private album cards show blurred cover with lock icon overlay. Clicking opens a code-entry dialog inline. Entering a valid code calls `POST /api/albums/[slug]/verify`, which validates against DB and sets httpOnly cookie `alb_{albumId}` = the code (maxAge = seconds until code expiry).
 - Public `/albums/[slug]`: server component reads `alb_{albumId}` cookie, validates against `AlbumAccessCode` in DB (code match + not expired). Invalid → shows locked UI with link back to /albums. Valid → renders gallery normally.
 - **Private album photos excluded from home page**: `src/app/(public)/page.tsx` and `src/app/api/photos/route.ts` both filter `NOT: { album: { isPrivate: true } }`. Categories with only private-album photos also disappear from the home page filter tabs.
+- **Unlock persists until code expires**: `/albums` server page checks each private album's cookie on load. If valid, the album renders unblurred and links directly — no code re-entry. Cookie maxAge matches code expiry (up to 48h). Admin always sees all albums unblurred.
+- **Album collage robustness**: cover photos filtered to only those with valid URLs; grid rendered from `photos.length` not `_count.photos` to prevent blank cells from broken/missing images.
 
 ### Featured flag — removed
 - Removed from schema, API, admin UI, and photo dialog.

@@ -179,7 +179,9 @@ function AlbumDialog({
     }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setLocalCategories(categories); }, [categories]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setLocalLocations(locations); }, [locations]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -463,6 +465,7 @@ export function AlbumsManager() {
     setLocations(await locRes.json());
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
 
   function openNew() { setEditing(null); setDialogOpen(true); }

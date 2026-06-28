@@ -138,6 +138,7 @@ export function PhotosManager() {
     get("categories", setCategories);
     get("locations", setLocations);
     get("albums", setAlbums);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadPhotos()
       .catch(() => setPhotos([]))
       .finally(() => setLoading(false));

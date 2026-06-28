@@ -69,11 +69,18 @@ async function fetchInitial() {
 }
 
 export default async function HomePage() {
+  let photos: Photo[] = [];
+  let categories: string[] = [];
+  let initialNextCursor: number | null = null;
+
   try {
-    const { photos: rows, categories, nextCursor } = await fetchInitial();
-    const photos = rows.map(mapPhoto);
-    return <Gallery photos={photos} categories={categories} initialNextCursor={nextCursor} />;
+    const data = await fetchInitial();
+    photos = data.photos.map(mapPhoto);
+    categories = data.categories;
+    initialNextCursor = data.nextCursor;
   } catch {
-    return <Gallery photos={[]} categories={[]} initialNextCursor={null} />;
+    // leave defaults — empty gallery
   }
+
+  return <Gallery photos={photos} categories={categories} initialNextCursor={initialNextCursor} />;
 }
