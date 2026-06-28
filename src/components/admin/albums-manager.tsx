@@ -20,21 +20,106 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type Category = { id: string; name: string };
-type Location = { id: string; name: string };
+type Opt = { id: string; name: string };
 type Album = {
   id: string;
   name: string;
   slug: string;
   description: string | null;
   categoryId: string | null;
-  category: Category | null;
+  category: Opt | null;
   locationId: string | null;
-  location: Location | null;
+  location: Opt | null;
   coverPhotoId: string | null;
   coverPhoto: { r2ThumbUrl: string | null; r2Url: string } | null;
   _count: { photos: number };
 };
+
+function QuickAddDialog({
+  open,
+  onOpenChange,
+  title,
+  placeholder,
+  existingNames,
+  apiPath,
+  onAdded,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  placeholder: string;
+  existingNames: string[];
+  apiPath: string;
+  onAdded: (item: Opt) => void;
+}) {
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) { setName(""); setError(""); }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) { setError("Name is required."); return; }
+    if (existingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
+      setError("Already exists."); return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch(apiPath, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Could not save.");
+        return;
+      }
+      const item = await res.json();
+      onAdded({ id: item.id, name: item.name });
+      onOpenChange(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!busy) onOpenChange(v); }}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={placeholder}
+              autoFocus
+            />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {busy ? "Saving…" : "Add"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function AlbumDialog({
   open,
@@ -47,8 +132,8 @@ function AlbumDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   album: Album | null;
-  categories: Category[];
-  locations: Location[];
+  categories: Opt[];
+  locations: Opt[];
   onSaved: () => void;
 }) {
   const isEdit = album !== null;
@@ -59,13 +144,29 @@ function AlbumDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    setName(album?.name ?? "");
-    setDescription(album?.description ?? "");
-    setCategoryId(album?.categoryId ?? "none");
-    setLocationId(album?.locationId ?? "none");
-    setError("");
-  }, [album, open]);
+  const [localCategories, setLocalCategories] = useState<Opt[]>(categories);
+  const [localLocations, setLocalLocations] = useState<Opt[]>(locations);
+  const [addCatOpen, setAddCatOpen] = useState(false);
+  const [addLocOpen, setAddLocOpen] = useState(false);
+
+  // Sync props → local state each time the dialog opens
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) {
+      setName(album?.name ?? "");
+      setDescription(album?.description ?? "");
+      setCategoryId(album?.categoryId ?? "none");
+      setLocationId(album?.locationId ?? "none");
+      setError("");
+      setLocalCategories(categories);
+      setLocalLocations(locations);
+    }
+  }
+
+  // Keep local lists in sync when parent reloads (e.g. after save)
+  useEffect(() => { setLocalCategories(categories); }, [categories]);
+  useEffect(() => { setLocalLocations(locations); }, [locations]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -111,91 +212,143 @@ function AlbumDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!busy) onOpenChange(v); }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit album" : "New album"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="al-name">Name</Label>
-            <Input
-              id="al-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Game Reserve 2024"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="al-desc">Description</Label>
-            <Textarea
-              id="al-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Category</Label>
-            <Select
-              items={{ none: "No category", ...Object.fromEntries(categories.map((c) => [c.id, c.name])) }}
-              value={categoryId}
-              onValueChange={(v) => setCategoryId(v ?? "none")}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No category</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Location</Label>
-            <Select
-              items={{ none: "No location", ...Object.fromEntries(locations.map((l) => [l.id, l.name])) }}
-              value={locationId}
-              onValueChange={(v) => setLocationId(v ?? "none")}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No location</SelectItem>
-                {locations.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center justify-between pt-1">
-            <div>
-              {isEdit && (
-                <Button type="button" variant="destructive" size="sm" disabled={busy} onClick={handleDelete}>
-                  Delete
+    <>
+      <Dialog open={open} onOpenChange={(v) => { if (!busy) onOpenChange(v); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{isEdit ? "Edit album" : "New album"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="al-name">Name</Label>
+              <Input
+                id="al-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Game Reserve 2024"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="al-desc">Description</Label>
+              <Textarea
+                id="al-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Optional"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <div className="flex items-center gap-1.5">
+                <Select
+                  items={{ none: "No category", ...Object.fromEntries(localCategories.map((c) => [c.id, c.name])) }}
+                  value={categoryId}
+                  onValueChange={(v) => setCategoryId(v ?? "none")}
+                >
+                  <SelectTrigger className="w-full flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No category</SelectItem>
+                    {localCategories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 p-0 text-base"
+                  onClick={() => setAddCatOpen(true)}
+                  title="Add category"
+                >
+                  +
                 </Button>
-              )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              {error && <span className="text-sm text-destructive">{error}</span>}
-              <Button type="submit" disabled={busy}>
-                {busy ? "Saving…" : isEdit ? "Save" : "Create"}
-              </Button>
+            <div className="space-y-2">
+              <Label>Location</Label>
+              <div className="flex items-center gap-1.5">
+                <Select
+                  items={{ none: "No location", ...Object.fromEntries(localLocations.map((l) => [l.id, l.name])) }}
+                  value={locationId}
+                  onValueChange={(v) => setLocationId(v ?? "none")}
+                >
+                  <SelectTrigger className="w-full flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No location</SelectItem>
+                    {localLocations.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 w-8 shrink-0 p-0 text-base"
+                  onClick={() => setAddLocOpen(true)}
+                  title="Add location"
+                >
+                  +
+                </Button>
+              </div>
             </div>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+            <div className="flex items-center justify-between pt-1">
+              <div>
+                {isEdit && (
+                  <Button type="button" variant="destructive" size="sm" disabled={busy} onClick={handleDelete}>
+                    Delete
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {error && <span className="text-sm text-destructive">{error}</span>}
+                <Button type="submit" disabled={busy}>
+                  {busy ? "Saving…" : isEdit ? "Save" : "Create"}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <QuickAddDialog
+        open={addCatOpen}
+        onOpenChange={setAddCatOpen}
+        title="Add category"
+        placeholder="e.g. Wildlife"
+        existingNames={localCategories.map((c) => c.name)}
+        apiPath="/api/admin/categories"
+        onAdded={(item) => {
+          setLocalCategories((prev) => [...prev, item]);
+          setCategoryId(item.id);
+        }}
+      />
+
+      <QuickAddDialog
+        open={addLocOpen}
+        onOpenChange={setAddLocOpen}
+        title="Add location"
+        placeholder="e.g. Cape Town"
+        existingNames={localLocations.map((l) => l.name)}
+        apiPath="/api/admin/locations"
+        onAdded={(item) => {
+          setLocalLocations((prev) => [...prev, item]);
+          setLocationId(item.id);
+        }}
+      />
+    </>
   );
 }
 
 export function AlbumsManager() {
   const [albums, setAlbums] = useState<Album[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [categories, setCategories] = useState<Opt[]>([]);
+  const [locations, setLocations] = useState<Opt[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Album | null>(null);
 
