@@ -45,18 +45,26 @@ export async function PATCH(
     });
   }
 
-  const album = await prisma.album.update({
-    where: { id },
-    data,
-    include: {
-      category: true,
-      location: true,
-      coverPhoto: { select: { r2ThumbUrl: true, r2Url: true } },
-      accessCodes: { orderBy: { createdAt: "desc" } },
-      _count: { select: { photos: true } },
-    },
-  });
-  return NextResponse.json(album);
+  try {
+    const updated = await prisma.album.update({
+      where: { id },
+      data,
+      include: {
+        category: true,
+        location: true,
+        coverPhoto: { select: { r2ThumbUrl: true, r2Url: true } },
+        accessCodes: { orderBy: { createdAt: "desc" } },
+        _count: { select: { photos: true } },
+      },
+    });
+    return NextResponse.json(updated);
+  } catch (err) {
+    console.error("Album PATCH error:", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(

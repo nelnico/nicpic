@@ -203,7 +203,10 @@ function AlbumDialog({
           body: JSON.stringify(body),
         }
       );
-      if (!res.ok) throw new Error("Failed to save album.");
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.error ?? `Failed to save album (${res.status}).`);
+      }
       onSaved();
       onOpenChange(false);
     } catch (err) {
