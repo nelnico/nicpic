@@ -28,9 +28,10 @@ type Album = {
 interface AlbumsPageProps {
   albums: Album[];
   categories: string[];
+  isAdmin?: boolean;
 }
 
-function AlbumCover({ album }: { album: Album }) {
+function AlbumCover({ album, isAdmin }: { album: Album; isAdmin?: boolean }) {
   const photos = album.photos;
   const inner =
     photos.length === 0 ? (
@@ -58,13 +59,10 @@ function AlbumCover({ album }: { album: Album }) {
       </div>
     );
 
-  if (album.isPrivate) {
+  if (album.isPrivate && !isAdmin) {
     return (
       <div className="relative aspect-square w-full overflow-hidden bg-muted">
-        <div className="blur-sm">{inner}</div>
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-          <span className="text-2xl">🔒</span>
-        </div>
+        <div style={{ filter: "blur(2px)" }}>{inner}</div>
       </div>
     );
   }
@@ -151,7 +149,7 @@ function CodePromptDialog({
   );
 }
 
-export function AlbumsPage({ albums, categories }: AlbumsPageProps) {
+export function AlbumsPage({ albums, categories, isAdmin }: AlbumsPageProps) {
   const [active, setActive] = useState<string | "All">("All");
   const [promptAlbum, setPromptAlbum] = useState<Album | null>(null);
 
@@ -180,7 +178,7 @@ export function AlbumsPage({ albums, categories }: AlbumsPageProps) {
             {visible.map((album) => {
               const card = (
                 <div className="group block overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-foreground/30">
-                  <AlbumCover album={album} />
+                  <AlbumCover album={album} isAdmin={isAdmin} />
                   <div className="p-3">
                     <p className="font-medium leading-tight">{album.name}</p>
                     {album.location && (
@@ -191,7 +189,7 @@ export function AlbumsPage({ albums, categories }: AlbumsPageProps) {
                 </div>
               );
 
-              if (album.isPrivate) {
+              if (album.isPrivate && !isAdmin) {
                 return (
                   <button
                     key={album.id}

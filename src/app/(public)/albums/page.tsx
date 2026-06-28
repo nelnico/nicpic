@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { verifySession } from "@/lib/auth";
 import { AlbumsPage } from "@/components/gallery/albums-page";
 
 export const dynamic = "force-dynamic";
 
 export default async function AlbumsPageRoute() {
+  const isAdmin = await verifySession();
+
   const [albums, catRows] = await Promise.all([
     prisma.album.findMany({
       include: {
@@ -27,5 +30,5 @@ export default async function AlbumsPageRoute() {
 
   const categories = catRows.map((c) => c.name);
 
-  return <AlbumsPage albums={albums} categories={categories} />;
+  return <AlbumsPage albums={albums} categories={categories} isAdmin={isAdmin} />;
 }
