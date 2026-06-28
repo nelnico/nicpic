@@ -62,7 +62,7 @@ function AlbumCover({ album, isAdmin }: { album: Album; isAdmin?: boolean }) {
   if (album.isPrivate && !isAdmin) {
     return (
       <div className="relative aspect-square w-full overflow-hidden bg-muted">
-        <div style={{ filter: "blur(2px)" }}>{inner}</div>
+        <div className="absolute inset-0" style={{ filter: "blur(2px)" }}>{inner}</div>
       </div>
     );
   }
