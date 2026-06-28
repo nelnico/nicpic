@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Gallery } from "@/components/gallery/gallery";
@@ -54,6 +55,47 @@ export default async function AlbumPage({
     include: { location: true },
   });
   if (!album) notFound();
+
+  // Gate private albums behind a valid access code cookie
+  if (album.isPrivate) {
+    const jar = await cookies();
+    const cookieCode = jar.get(`alb_${album.id}`)?.value;
+
+    const valid = cookieCode
+      ? await prisma.albumAccessCode.findFirst({
+          where: {
+            albumId: album.id,
+            code: cookieCode,
+            expiresAt: { gt: new Date() },
+          },
+        })
+      : null;
+
+    if (!valid) {
+      return (
+        <main className="mx-auto max-w-[1600px] px-6 pt-4 pb-10 md:px-10">
+          <p className="text-sm text-muted-foreground">
+            <Link href="/albums" className="hover:text-foreground transition-colors">Albums</Link>
+            <span className="mx-1.5">›</span>
+            {album.name}
+          </p>
+          <div className="mt-16 flex flex-col items-center gap-4 text-center">
+            <span className="text-4xl">🔒</span>
+            <p className="text-lg font-medium">This album is private</p>
+            <p className="text-sm text-muted-foreground">
+              Go back to albums and enter your access code to view it.
+            </p>
+            <Link
+              href="/albums"
+              className="mt-2 text-sm underline underline-offset-4 hover:text-foreground text-muted-foreground transition-colors"
+            >
+              Back to albums
+            </Link>
+          </div>
+        </main>
+      );
+    }
+  }
 
   const photos = await prisma.photo.findMany({
     where: { albumId: album.id },

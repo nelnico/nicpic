@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifySession } from "@/lib/auth";
 
+function randomCode(length = 6) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  const arr = new Uint8Array(length);
+  crypto.getRandomValues(arr);
+  for (const byte of arr) code += chars[byte % chars.length];
+  return code;
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,7 +20,8 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { name, description, categoryId, locationId, coverPhotoId } = await request.json();
+  const body = await request.json();
+  const { name, description, categoryId, locationId, coverPhotoId, isPrivate, generateCode } = body;
 
   const data: Record<string, unknown> = {};
   if (name !== undefined) {
@@ -22,6 +32,18 @@ export async function PATCH(
   if (categoryId !== undefined) data.categoryId = categoryId || null;
   if (locationId !== undefined) data.locationId = locationId || null;
   if (coverPhotoId !== undefined) data.coverPhotoId = coverPhotoId || null;
+  if (isPrivate !== undefined) data.isPrivate = isPrivate;
+
+  if (generateCode) {
+    // Create a new independent access code valid for 48h
+    await prisma.albumAccessCode.create({
+      data: {
+        albumId: id,
+        code: randomCode(),
+        expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
+      },
+    });
+  }
 
   const album = await prisma.album.update({
     where: { id },
@@ -30,6 +52,7 @@ export async function PATCH(
       category: true,
       location: true,
       coverPhoto: { select: { r2ThumbUrl: true, r2Url: true } },
+      accessCodes: { orderBy: { createdAt: "desc" } },
       _count: { select: { photos: true } },
     },
   });
@@ -45,7 +68,6 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  // Detach photos before deleting (albumId → null via onDelete:SetNull handled by DB)
   await prisma.album.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

@@ -21,19 +21,30 @@ import {
 } from "@/components/ui/select";
 
 type Opt = { id: string; name: string };
+type AccessCode = { id: string; code: string; expiresAt: string; createdAt: string };
 type Album = {
   id: string;
   name: string;
   slug: string;
   description: string | null;
+  isPrivate: boolean;
   categoryId: string | null;
   category: Opt | null;
   locationId: string | null;
   location: Opt | null;
   coverPhotoId: string | null;
   coverPhoto: { r2ThumbUrl: string | null; r2Url: string } | null;
+  accessCodes: AccessCode[];
   _count: { photos: number };
 };
+
+function hoursUntil(isoString: string) {
+  const diff = new Date(isoString).getTime() - Date.now();
+  if (diff <= 0) return null;
+  const h = Math.floor(diff / (1000 * 60 * 60));
+  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
 
 function QuickAddDialog({
   open,
@@ -139,9 +150,12 @@ function AlbumDialog({
   const isEdit = album !== null;
   const [name, setName] = useState(album?.name ?? "");
   const [description, setDescription] = useState(album?.description ?? "");
+  const [isPrivate, setIsPrivate] = useState(album?.isPrivate ?? false);
   const [categoryId, setCategoryId] = useState(album?.categoryId ?? "none");
   const [locationId, setLocationId] = useState(album?.locationId ?? "none");
+  const [codes, setCodes] = useState<AccessCode[]>(album?.accessCodes ?? []);
   const [busy, setBusy] = useState(false);
+  const [generatingCode, setGeneratingCode] = useState(false);
   const [error, setError] = useState("");
 
   const [localCategories, setLocalCategories] = useState<Opt[]>(categories);
@@ -149,22 +163,22 @@ function AlbumDialog({
   const [addCatOpen, setAddCatOpen] = useState(false);
   const [addLocOpen, setAddLocOpen] = useState(false);
 
-  // Sync props → local state each time the dialog opens
   const [prevOpen, setPrevOpen] = useState(open);
   if (prevOpen !== open) {
     setPrevOpen(open);
     if (open) {
       setName(album?.name ?? "");
       setDescription(album?.description ?? "");
+      setIsPrivate(album?.isPrivate ?? false);
       setCategoryId(album?.categoryId ?? "none");
       setLocationId(album?.locationId ?? "none");
+      setCodes(album?.accessCodes ?? []);
       setError("");
       setLocalCategories(categories);
       setLocalLocations(locations);
     }
   }
 
-  // Keep local lists in sync when parent reloads (e.g. after save)
   useEffect(() => { setLocalCategories(categories); }, [categories]);
   useEffect(() => { setLocalLocations(locations); }, [locations]);
 
@@ -177,6 +191,7 @@ function AlbumDialog({
       const body = {
         name: name.trim(),
         description: description.trim() || null,
+        isPrivate,
         categoryId: categoryId === "none" ? null : categoryId,
         locationId: locationId === "none" ? null : locationId,
       };
@@ -210,6 +225,32 @@ function AlbumDialog({
       setBusy(false);
     }
   }
+
+  async function generateCode() {
+    if (!isEdit) return;
+    setGeneratingCode(true);
+    try {
+      const res = await fetch(`/api/admin/albums/${album!.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generateCode: true }),
+      });
+      if (!res.ok) throw new Error("Failed to generate code.");
+      const updated = await res.json();
+      setCodes(updated.accessCodes ?? []);
+      onSaved();
+    } finally {
+      setGeneratingCode(false);
+    }
+  }
+
+  async function revokeCode(codeId: string) {
+    await fetch(`/api/admin/album-codes/${codeId}`, { method: "DELETE" });
+    setCodes((prev) => prev.filter((c) => c.id !== codeId));
+    onSaved();
+  }
+
+  const activeCodes = codes.filter((c) => new Date(c.expiresAt) > new Date());
 
   return (
     <>
@@ -297,6 +338,62 @@ function AlbumDialog({
                 </Button>
               </div>
             </div>
+
+            {/* Private toggle */}
+            <div className="flex items-center gap-3 rounded-md border border-border px-3 py-2.5">
+              <input
+                id="al-private"
+                type="checkbox"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                className="h-4 w-4 accent-foreground"
+              />
+              <Label htmlFor="al-private" className="font-normal">
+                Private album (requires access code to view)
+              </Label>
+            </div>
+
+            {/* Access codes — only shown when editing an existing private album */}
+            {isEdit && isPrivate && (
+              <div className="space-y-2 rounded-md border border-border p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Access codes</p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={generatingCode}
+                    onClick={generateCode}
+                  >
+                    {generatingCode ? "Generating…" : "Generate code"}
+                  </Button>
+                </div>
+                {activeCodes.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No active codes — generate one to share.</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {activeCodes.map((c) => (
+                      <li key={c.id} className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-sm tracking-widest">{c.code}</span>
+                        <span className="text-xs text-muted-foreground">
+                          expires in {hoursUntil(c.expiresAt)}
+                        </span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+                          onClick={() => revokeCode(c.id)}
+                        >
+                          Revoke
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-between pt-1">
               <div>
                 {isEdit && (
@@ -395,6 +492,9 @@ export function AlbumsManager() {
                   onClick={() => openEdit(a)}
                 >
                   <span className="font-medium">{a.name}</span>
+                  {a.isPrivate && (
+                    <span className="ml-2 text-xs text-muted-foreground">🔒</span>
+                  )}
                   <span className="ml-2 text-muted-foreground">({a._count.photos})</span>
                 </button>
               </div>
