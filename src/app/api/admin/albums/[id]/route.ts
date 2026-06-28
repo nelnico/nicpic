@@ -11,7 +11,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { name, description, locationId, coverPhotoId } = await request.json();
+  const { name, description, categoryId, locationId, coverPhotoId } = await request.json();
 
   const data: Record<string, unknown> = {};
   if (name !== undefined) {
@@ -19,6 +19,7 @@ export async function PATCH(
     data.slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   }
   if (description !== undefined) data.description = description || null;
+  if (categoryId !== undefined) data.categoryId = categoryId || null;
   if (locationId !== undefined) data.locationId = locationId || null;
   if (coverPhotoId !== undefined) data.coverPhotoId = coverPhotoId || null;
 
@@ -26,6 +27,7 @@ export async function PATCH(
     where: { id },
     data,
     include: {
+      category: true,
       location: true,
       coverPhoto: { select: { r2ThumbUrl: true, r2Url: true } },
       _count: { select: { photos: true } },

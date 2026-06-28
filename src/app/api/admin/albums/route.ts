@@ -5,6 +5,7 @@ import { verifySession } from "@/lib/auth";
 export async function GET() {
   const albums = await prisma.album.findMany({
     include: {
+      category: true,
       location: true,
       coverPhoto: { select: { r2ThumbUrl: true, r2Url: true } },
       _count: { select: { photos: true } },
@@ -19,11 +20,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { name, description, locationId } = await request.json();
+  const { name, description, categoryId, locationId } = await request.json();
   const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const album = await prisma.album.create({
-    data: { name, slug, description: description || null, locationId: locationId || null },
-    include: { location: true, _count: { select: { photos: true } } },
+    data: {
+      name,
+      slug,
+      description: description || null,
+      categoryId: categoryId || null,
+      locationId: locationId || null,
+    },
+    include: { category: true, location: true, _count: { select: { photos: true } } },
   });
   return NextResponse.json(album);
 }

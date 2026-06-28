@@ -20,12 +20,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+type Category = { id: string; name: string };
 type Location = { id: string; name: string };
 type Album = {
   id: string;
   name: string;
   slug: string;
   description: string | null;
+  categoryId: string | null;
+  category: Category | null;
   locationId: string | null;
   location: Location | null;
   coverPhotoId: string | null;
@@ -37,18 +40,21 @@ function AlbumDialog({
   open,
   onOpenChange,
   album,
+  categories,
   locations,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   album: Album | null;
+  categories: Category[];
   locations: Location[];
   onSaved: () => void;
 }) {
   const isEdit = album !== null;
   const [name, setName] = useState(album?.name ?? "");
   const [description, setDescription] = useState(album?.description ?? "");
+  const [categoryId, setCategoryId] = useState(album?.categoryId ?? "none");
   const [locationId, setLocationId] = useState(album?.locationId ?? "none");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -56,6 +62,7 @@ function AlbumDialog({
   useEffect(() => {
     setName(album?.name ?? "");
     setDescription(album?.description ?? "");
+    setCategoryId(album?.categoryId ?? "none");
     setLocationId(album?.locationId ?? "none");
     setError("");
   }, [album, open]);
@@ -69,6 +76,7 @@ function AlbumDialog({
       const body = {
         name: name.trim(),
         description: description.trim() || null,
+        categoryId: categoryId === "none" ? null : categoryId,
         locationId: locationId === "none" ? null : locationId,
       };
       const res = await fetch(
@@ -128,6 +136,24 @@ function AlbumDialog({
             />
           </div>
           <div className="space-y-2">
+            <Label>Category</Label>
+            <Select
+              items={{ none: "No category", ...Object.fromEntries(categories.map((c) => [c.id, c.name])) }}
+              value={categoryId}
+              onValueChange={(v) => setCategoryId(v ?? "none")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No category</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label>Location</Label>
             <Select
               items={{ none: "No location", ...Object.fromEntries(locations.map((l) => [l.id, l.name])) }}
@@ -168,16 +194,19 @@ function AlbumDialog({
 
 export function AlbumsManager() {
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Album | null>(null);
 
   async function load() {
-    const [albumsRes, locRes] = await Promise.all([
+    const [albumsRes, catRes, locRes] = await Promise.all([
       fetch("/api/admin/albums"),
+      fetch("/api/admin/categories"),
       fetch("/api/admin/locations"),
     ]);
     setAlbums(await albumsRes.json());
+    setCategories(await catRes.json());
     setLocations(await locRes.json());
   }
 
@@ -231,6 +260,7 @@ export function AlbumsManager() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         album={editing}
+        categories={categories}
         locations={locations}
         onSaved={load}
       />

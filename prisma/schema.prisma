@@ -25,6 +25,7 @@ model Category {
   name      String
   slug      String   @unique
   photos    Photo[]
+  albums    Album[]
   createdAt DateTime @default(now())
 }
 
@@ -75,6 +76,8 @@ model Album {
   name         String
   slug         String    @unique
   description  String?
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   locationId   String?
   location     Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
   coverPhotoId String?
