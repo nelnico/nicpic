@@ -1,7 +1,7 @@
 # Build Progress — Nico's Photo Portfolio
 
 > **Purpose:** single source of truth for where this build is, so work can resume after any restart.
-> **Last updated:** 2026-06-25
+> **Last updated:** 2026-06-28
 
 ---
 
@@ -102,6 +102,21 @@ The gallery is a fully functional photo portfolio with:
 - Nav lives in `app/(public)/layout.tsx` — shared across all public pages. Admin has its own layout.
 - `focalLength35mm` removed from schema, API, dialog, types, gallery, lightbox.
 
+### Album categories
+- `Album.categoryId` optional FK → `Category` (onDelete: SetNull).
+- `Category` model now has `albums Album[]` relation.
+- `/albums` page shows category filter tabs (same pattern as home page photo categories). Client-side filtering — no server round-trip needed since album list is small.
+- Create/edit album dialog has category + location selects with `+` quick-add buttons (same pattern as photo upload dialog).
+
+### Private albums with access codes
+- `Album.isPrivate Boolean @default(false)` — mark any album as private from admin dialog.
+- `AlbumAccessCode` model: `id, albumId, code (6-char), expiresAt (48h from creation), createdAt`. Multiple independent codes per album — each is valid for 48h from when it was generated.
+- Admin: checkbox in album dialog; when checked, shows active access codes list (code + "expires in X hours" + Revoke button) and a Generate Code button. Revoke calls `DELETE /api/admin/album-codes/[id]`.
+- `PATCH /api/admin/albums/[id]` with `{ generateCode: true }` creates a new `AlbumAccessCode` record.
+- Public `/albums`: private album cards show blurred cover with lock icon overlay. Clicking opens a code-entry dialog inline. Entering a valid code calls `POST /api/albums/[slug]/verify`, which validates against DB and sets httpOnly cookie `alb_{albumId}` = the code (maxAge = seconds until code expiry).
+- Public `/albums/[slug]`: server component reads `alb_{albumId}` cookie, validates against `AlbumAccessCode` in DB (code match + not expired). Invalid → shows locked UI with link back to /albums. Valid → renders gallery normally.
+- **Private album photos excluded from home page**: `src/app/(public)/page.tsx` and `src/app/api/photos/route.ts` both filter `NOT: { album: { isPrivate: true } }`. Categories with only private-album photos also disappear from the home page filter tabs.
+
 ### Featured flag — removed
 - Removed from schema, API, admin UI, and photo dialog.
 
@@ -164,15 +179,17 @@ src/
    │  ├─ login/page.tsx
    │  └─ albums/[id]/page.tsx        # per-album photo management (server component)
    └─ api/
-      ├─ photos/route.ts             # public: cursor-paginated, category filter
+      ├─ photos/route.ts             # public: cursor-paginated, category filter, excludes private-album photos
+      ├─ albums/[slug]/verify/route.ts  # POST: validate access code, set httpOnly cookie
       └─ admin/
          ├─ login / logout / presign / categories / locations / photos
          ├─ albums/route.ts          # GET list, POST create
-         ├─ albums/[id]/route.ts     # PATCH, DELETE
+         ├─ albums/[id]/route.ts     # PATCH (inc. generateCode), DELETE
          ├─ albums/[id]/photos/route.ts  # GET photos in album
+         ├─ album-codes/[id]/route.ts    # DELETE — revoke individual access code
          ├─ photos/[id]/route.ts
          └─ photos/reorder/route.ts  # PATCH — drag-and-drop position save
-prisma/schema.prisma                 # Category, Location, Photo, Album, Tag, PhotoTag
+prisma/schema.prisma                 # Category, Location, Photo, Album, AlbumAccessCode, Tag, PhotoTag
 scripts/backfill-positions.mjs       # one-time position backfill (already ran)
 ```
 
