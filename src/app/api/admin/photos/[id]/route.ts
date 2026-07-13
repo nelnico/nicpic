@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { verifySession } from "@/lib/auth";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { r2Client, R2_BUCKET } from "@/lib/r2";
+import { processAndStoreImage } from "@/lib/photo-processing";
 
 export async function DELETE(
   _request: NextRequest,
@@ -75,6 +76,42 @@ export async function PATCH(
     data.tags = { deleteMany: {}, create: tagConnections };
   }
 
+  // Replace the underlying image file: the client already uploaded the new
+  // original to R2 (via /api/admin/presign); process it, point the record at
+  // the new files, and only then delete the old ones.
+  let oldR2Key: string | null = null;
+  let oldR2ThumbKey: string | null = null;
+  if (body.r2Key && body.r2Url && body.thumbKey) {
+    const existing = await prisma.photo.findUnique({ where: { id } });
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    oldR2Key = existing.r2Key;
+    oldR2ThumbKey = existing.r2ThumbKey;
+
+    const { r2ThumbUrl, resolvedThumbKey, processedWidth, processedHeight } =
+      await processAndStoreImage({
+        r2Key: body.r2Key,
+        r2Url: body.r2Url,
+        thumbKey: body.thumbKey,
+        width: body.width,
+        height: body.height,
+      });
+
+    data.r2Key = body.r2Key;
+    data.r2Url = body.r2Url;
+    data.r2ThumbKey = resolvedThumbKey;
+    data.r2ThumbUrl = r2ThumbUrl;
+    data.width = processedWidth;
+    data.height = processedHeight;
+  }
+
   const photo = await prisma.photo.update({ where: { id }, data });
+
+  if (oldR2Key) {
+    await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: oldR2Key }));
+    if (oldR2ThumbKey) {
+      await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: oldR2ThumbKey }));
+    }
+  }
+
   return NextResponse.json(photo);
 }

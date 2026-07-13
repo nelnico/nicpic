@@ -1,7 +1,7 @@
 # Build Progress — Nico's Photo Portfolio
 
 > **Purpose:** single source of truth for where this build is, so work can resume after any restart.
-> **Last updated:** 2026-06-28 (lint clean, build green)
+> **Last updated:** 2026-07-13 (lint clean, build green)
 
 ---
 
@@ -81,6 +81,11 @@ The gallery is a fully functional photo portfolio with:
 - **Date picker**: `When taken` field replaced with a Base UI Popover + react-day-picker calendar (`src/components/ui/date-picker.tsx`). Stores as `YYYY-MM-DD` string, same as before.
 - `react-day-picker` added as a dependency.
 
+### Replace photo file (admin edit)
+- Edit dialog now has an optional "Replace image" file input — uploading a new file there swaps the underlying photo entirely (original, thumbnail, dimensions, EXIF), keeping all other metadata (title, category, tags, etc.) as edited.
+- Shared resize/thumbnail logic extracted into `src/lib/photo-processing.ts` (`processAndStoreImage`), used by both `POST /api/admin/photos` (new upload) and `PATCH /api/admin/photos/[id]` (replace).
+- `PATCH` order of operations: upload new file to R2 (client, via presign) → process + point DB record at new `r2Key`/`r2ThumbKey` → only then delete the old R2 objects. Avoids ever leaving the record pointing at a missing file if a step fails.
+
 ### Admin album photo management
 - `/admin/albums/[id]` — server-rendered page showing all photos in an album as a thumbnail grid.
 - Hover a photo → X button removes it from the album (`PATCH albumId: null`).
@@ -146,7 +151,8 @@ src/
 ├─ proxy.ts                          # admin route protection (Next 16 "proxy")
 ├─ lib/
 │  ├─ prisma.ts                      # Prisma 7 client via pg driver adapter
-│  ├─ r2.ts                          # S3 client → R2; thumbnail generation via jimp
+│  ├─ r2.ts                          # S3 client → R2
+│  ├─ photo-processing.ts            # resize + thumbnail via jimp, shared by upload + replace
 │  ├─ auth.ts                        # JWT session cookie helpers
 │  └─ utils.ts                       # shadcn cn()
 ├─ config/site.ts                    # all branding (name, eyebrow, title, description)

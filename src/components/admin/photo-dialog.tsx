@@ -309,10 +309,68 @@ export function PhotoDialog({
     setStatus("");
     try {
       if (isEdit) {
+        let replaceFields: {
+          r2Key: string;
+          r2Url: string;
+          thumbKey: string;
+          width: number;
+          height: number;
+        } | null = null;
+        let exif: ExifData = {};
+
+        if (files.length > 0) {
+          const f = files[0];
+          setStatus("Replacing image — reading file…");
+          const [{ width, height }, exifData] = await Promise.all([
+            getImageDimensions(f),
+            extractExif(f),
+          ]);
+          exif = exifData;
+
+          setStatus("Replacing image — requesting upload URL…");
+          const presignRes = await fetch("/api/admin/presign", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: f.name, contentType: f.type }),
+          });
+          if (!presignRes.ok) throw new Error("Failed to get upload URL.");
+          const { presignedUrl, key, publicUrl, thumbKey } = await presignRes.json();
+
+          setStatus("Replacing image — uploading to R2…");
+          const uploadRes = await fetch(presignedUrl, {
+            method: "PUT",
+            body: f,
+            headers: { "Content-Type": f.type },
+          });
+          if (!uploadRes.ok) throw new Error("Upload to R2 failed.");
+
+          replaceFields = { r2Key: key, r2Url: publicUrl, thumbKey, width, height };
+          setStatus("Saving changes…");
+        }
+
+        const meta = metaBody();
         const res = await fetch(`/api/admin/photos/${photo!.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(metaBody()),
+          body: JSON.stringify({
+            ...meta,
+            takenAt: meta.takenAt || exif.takenAt || null,
+            // Replacing the file also resets EXIF metadata to match it.
+            ...(files.length > 0
+              ? {
+                  cameraMake: exif.cameraMake ?? null,
+                  cameraModel: exif.cameraModel ?? null,
+                  iso: exif.iso ?? null,
+                  aperture: exif.aperture ?? null,
+                  shutterSpeed: exif.shutterSpeed ?? null,
+                  focalLength: exif.focalLength ?? null,
+                  exposureMode: exif.exposureMode ?? null,
+                  meteringMode: exif.meteringMode ?? null,
+                  flash: exif.flash ?? null,
+                }
+              : {}),
+            ...(replaceFields ?? {}),
+          }),
         });
         if (!res.ok) throw new Error("Failed to save changes.");
       } else {
@@ -531,27 +589,33 @@ export function PhotoDialog({
               />
             </div>
 
-            {!isEdit && (
-              <div className="space-y-2">
-                <Label htmlFor="pd-file">Image files</Label>
-                <Input
-                  id="pd-file"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) =>
-                    setFiles(e.target.files ? Array.from(e.target.files) : [])
-                  }
-                />
-                {files.length > 1 && (
-                  <p className="text-xs text-muted-foreground">
-                    {files.length} photos selected — all will share the same
-                    category, location, date, and tags. EXIF is read per-file.
-                    Edit titles &amp; descriptions individually afterwards.
-                  </p>
-                )}
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="pd-file">
+                {isEdit ? "Replace image (optional)" : "Image files"}
+              </Label>
+              <Input
+                id="pd-file"
+                type="file"
+                accept="image/*"
+                multiple={!isEdit}
+                onChange={(e) =>
+                  setFiles(e.target.files ? Array.from(e.target.files) : [])
+                }
+              />
+              {isEdit && files.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  This replaces the current photo, thumbnail, and EXIF data.
+                  The old file will be deleted from R2.
+                </p>
+              )}
+              {!isEdit && files.length > 1 && (
+                <p className="text-xs text-muted-foreground">
+                  {files.length} photos selected — all will share the same
+                  category, location, date, and tags. EXIF is read per-file.
+                  Edit titles &amp; descriptions individually afterwards.
+                </p>
+              )}
+            </div>
 
             <div className="flex items-center justify-between">
               <div>

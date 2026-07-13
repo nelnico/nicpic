@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Jimp } from "jimp";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 import { verifySession } from "@/lib/auth";
-import { r2Client, R2_BUCKET, R2_PUBLIC_URL } from "@/lib/r2";
+import { processAndStoreImage } from "@/lib/photo-processing";
 
 export const maxDuration = 30;
 
@@ -39,52 +37,14 @@ export async function POST(request: NextRequest) {
   } = body;
 
   // Fetch the uploaded original from R2, resize it, and generate a thumbnail.
-  let r2ThumbUrl: string | null = null;
-  let resolvedThumbKey: string | null = null;
-  let processedWidth: number  = width  as number;
-  let processedHeight: number = height as number;
-
-  try {
-    const imageRes = await fetch(r2Url as string);
-    if (!imageRes.ok) throw new Error(`R2 fetch returned ${imageRes.status}`);
-    const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
-
-    // Resize full image to max 2560px on longest edge, re-encode as JPEG q92
-    const fullImg = await Jimp.fromBuffer(imageBuffer);
-    if (fullImg.width > 2560 || fullImg.height > 2560) {
-      fullImg.scaleToFit({ w: 2560, h: 2560 });
-    }
-    const fullBuffer = await fullImg.getBuffer("image/jpeg", { quality: 92 });
-
-    await r2Client.send(new PutObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: r2Key as string,
-      Body: fullBuffer,
-      ContentType: "image/jpeg",
-    }));
-
-    processedWidth  = fullImg.width;
-    processedHeight = fullImg.height;
-
-    // Thumbnail — max 800px wide, JPEG q80
-    const thumbImg = await Jimp.fromBuffer(fullBuffer);
-    if (thumbImg.width > 800) {
-      thumbImg.scaleToFit({ w: 800, h: 99999 });
-    }
-    const thumbBuffer = await thumbImg.getBuffer("image/jpeg", { quality: 80 });
-
-    await r2Client.send(new PutObjectCommand({
-      Bucket: R2_BUCKET,
-      Key: thumbKey as string,
-      Body: thumbBuffer,
-      ContentType: "image/jpeg",
-    }));
-
-    r2ThumbUrl       = `${R2_PUBLIC_URL}/${thumbKey}`;
-    resolvedThumbKey = thumbKey as string;
-  } catch (err) {
-    console.error("[photos] image processing failed:", err);
-  }
+  const { r2ThumbUrl, resolvedThumbKey, processedWidth, processedHeight } =
+    await processAndStoreImage({
+      r2Key: r2Key as string,
+      r2Url: r2Url as string,
+      thumbKey: thumbKey as string,
+      width: width as number,
+      height: height as number,
+    });
 
   // Upsert tags and connect them (sequential to avoid race on unique name constraint)
   const uniqueTagNames = [...new Set((tags as string[]).map((t) => t.trim()).filter(Boolean))];
