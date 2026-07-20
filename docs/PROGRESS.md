@@ -236,7 +236,7 @@ The app is production-ready for Nico's personal use. Likely next things when pho
 
 ## Backlog / open decisions
 
-- [ ] Per-photo public URLs (`/photo/[id]`) — not in Lovable design, can add later.
+- [x] Per-photo public URLs (`/photo/[id]`) — opens the lightbox over the same grid context; gated behind the album's access-code cookie for private-album photos. Photo cards have a hover kebab menu with "Copy link".
 - [ ] Location-level filter tabs — categories only for now.
 - [ ] R2 custom photo domain (currently r2.dev, rate-limited for heavy production use).
 - [ ] Admin password UI (currently set in `.env.local`).

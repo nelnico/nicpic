@@ -12,6 +12,7 @@ interface GalleryProps {
   photos: Photo[];
   initialNextCursor: number | null;
   albumMode?: boolean;
+  initialSelectedId?: string | null;
 }
 
 function mapApiPhoto(p: Record<string, unknown>): Photo {
@@ -54,12 +55,13 @@ export function Gallery({
   photos: initialPhotos,
   initialNextCursor,
   albumMode = false,
+  initialSelectedId = null,
 }: GalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [, setCursor] = useState<number | null>(initialNextCursor);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
 
