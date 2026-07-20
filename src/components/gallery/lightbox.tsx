@@ -8,7 +8,7 @@ interface LightboxProps {
   photos: Photo[];
   index: number;
   onClose: () => void;
-  onIndexChange: (index: number) => void;
+  onNavigate: (dir: number) => void;
 }
 
 function Cell({ label, value }: { label: string; value: string }) {
@@ -58,7 +58,7 @@ function PhotoDetails({ photo }: { photo: Photo }) {
   );
 }
 
-export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProps) {
+export function Lightbox({ photos, index, onClose, onNavigate }: LightboxProps) {
   const photo = photos[index];
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -101,10 +101,7 @@ export function Lightbox({ photos, index, onClose, onIndexChange }: LightboxProp
     setScale(1); setPanX(0); setPanY(0);
   }, []);
 
-  const go = useCallback(
-    (dir: number) => onIndexChange((index + dir + photos.length) % photos.length),
-    [index, photos.length, onIndexChange],
-  );
+  const go = useCallback((dir: number) => onNavigate(dir), [onNavigate]);
 
   const handleKey = useCallback(
     (e: KeyboardEvent) => {

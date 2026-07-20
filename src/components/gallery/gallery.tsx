@@ -58,12 +58,13 @@ export function Gallery({
   initialSelectedId = null,
 }: GalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
-  const [, setCursor] = useState<number | null>(initialNextCursor);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
+  const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
+  const cursorRef = useRef<number | null>(initialNextCursor);
 
   const fetchPhotos = useCallback(
     async (q: string, cur: number | null) => {
@@ -83,7 +84,7 @@ export function Gallery({
 
         const mapped = data.photos.map(mapApiPhoto);
         setPhotos(cur === null ? mapped : (prev) => [...prev, ...mapped]);
-        setCursor(data.nextCursor);
+        cursorRef.current = data.nextCursor;
       } finally {
         loadingRef.current = false;
         setLoading(false);
@@ -100,7 +101,7 @@ export function Gallery({
       return;
     }
     setPhotos([]);
-    setCursor(null);
+    cursorRef.current = null;
     fetchPhotos(query, null);
   }, [query, fetchPhotos]);
 
@@ -111,11 +112,8 @@ export function Gallery({
     if (!sentinel) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !loadingRef.current) {
-          setCursor((cur) => {
-            if (cur !== null) fetchPhotos(query, cur);
-            return cur;
-          });
+        if (entry.isIntersecting && !loadingRef.current && cursorRef.current !== null) {
+          fetchPhotos(query, cursorRef.current);
         }
       },
       { rootMargin: "300px" },
@@ -123,6 +121,44 @@ export function Gallery({
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [query, fetchPhotos, albumMode]);
+
+  // Once a page fetched for lightbox navigation lands, jump to the photo that was waiting on it
+  useEffect(() => {
+    if (pendingIndex !== null && pendingIndex < photos.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedId(photos[pendingIndex].id);
+      setPendingIndex(null);
+    }
+  }, [photos, pendingIndex]);
+
+  const handleNavigate = useCallback(
+    (dir: number) => {
+      setSelectedId((curId) => {
+        const curIndex = photos.findIndex((p) => p.id === curId);
+        if (curIndex === -1) return curId;
+
+        const nextIndex = curIndex + dir;
+
+        if (nextIndex >= 0 && nextIndex < photos.length) {
+          return photos[nextIndex].id;
+        }
+
+        if (nextIndex >= photos.length) {
+          if (cursorRef.current !== null) {
+            setPendingIndex(nextIndex);
+            fetchPhotos(query, cursorRef.current);
+            return curId;
+          }
+          // No more pages left — loop back to the first photo
+          return photos[0]?.id ?? curId;
+        }
+
+        // Stepped before the first loaded photo — loop to the last one loaded
+        return photos[photos.length - 1]?.id ?? curId;
+      });
+    },
+    [photos, query, fetchPhotos],
+  );
 
   const selectedIndex = photos.findIndex((p) => p.id === selectedId);
   const selected = selectedIndex >= 0 ? photos[selectedIndex] : null;
@@ -178,7 +214,7 @@ export function Gallery({
           photos={photos}
           index={selectedIndex}
           onClose={() => setSelectedId(null)}
-          onIndexChange={(i) => setSelectedId(photos[i].id)}
+          onNavigate={handleNavigate}
         />
       )}
     </div>
