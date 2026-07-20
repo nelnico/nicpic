@@ -43,19 +43,12 @@ async function fetchInitial() {
     tags: { include: { tag: true } },
   } as const;
 
-  const [rows, catRows] = await Promise.all([
-    prisma.photo.findMany({
-      where: { NOT: { album: { isPrivate: true } } },
-      include,
-      orderBy: { position: "desc" },
-      take: INITIAL_LIMIT + 1,
-    }),
-    prisma.category.findMany({
-      where: { photos: { some: { NOT: { album: { isPrivate: true } } } } },
-      select: { name: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+  const rows = await prisma.photo.findMany({
+    where: { NOT: { album: { isPrivate: true } } },
+    include,
+    orderBy: { position: "desc" },
+    take: INITIAL_LIMIT + 1,
+  });
 
   const hasMore    = rows.length > INITIAL_LIMIT;
   const batch      = hasMore ? rows.slice(0, INITIAL_LIMIT) : rows;
@@ -63,24 +56,21 @@ async function fetchInitial() {
 
   return {
     photos: batch,
-    categories: catRows.map((c) => c.name),
     nextCursor,
   };
 }
 
 export default async function HomePage() {
   let photos: Photo[] = [];
-  let categories: string[] = [];
   let initialNextCursor: number | null = null;
 
   try {
     const data = await fetchInitial();
     photos = data.photos.map(mapPhoto);
-    categories = data.categories;
     initialNextCursor = data.nextCursor;
   } catch {
     // leave defaults — empty gallery
   }
 
-  return <Gallery photos={photos} categories={categories} initialNextCursor={initialNextCursor} />;
+  return <Gallery photos={photos} initialNextCursor={initialNextCursor} />;
 }

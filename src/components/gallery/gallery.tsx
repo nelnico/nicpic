@@ -1,16 +1,15 @@
 "use client";
 
-import { FilterBar } from "@/components/gallery/filter-bar";
 import { Lightbox } from "@/components/gallery/lightbox";
 import { PhotoCard } from "@/components/gallery/photo-card";
-import type { Category, Photo } from "@/types/photo";
+import { SearchBar } from "@/components/gallery/search-bar";
+import type { Photo } from "@/types/photo";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const LIMIT = 30;
 
 interface GalleryProps {
   photos: Photo[];
-  categories: Category[];
   initialNextCursor: number | null;
   albumMode?: boolean;
 }
@@ -53,26 +52,25 @@ function mapApiPhoto(p: Record<string, unknown>): Photo {
 
 export function Gallery({
   photos: initialPhotos,
-  categories,
   initialNextCursor,
   albumMode = false,
 }: GalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [, setCursor] = useState<number | null>(initialNextCursor);
   const [loading, setLoading] = useState(false);
-  const [active, setActive] = useState<Category | "All">("All");
+  const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
 
   const fetchPhotos = useCallback(
-    async (category: Category | "All", cur: number | null) => {
+    async (q: string, cur: number | null) => {
       if (loadingRef.current) return;
       loadingRef.current = true;
       setLoading(true);
       try {
         const params = new URLSearchParams({ limit: String(LIMIT) });
-        if (category !== "All") params.set("category", category);
+        if (q) params.set("q", q);
         if (cur !== null) params.set("cursor", String(cur));
 
         const res = await fetch(`/api/photos?${params}`);
@@ -92,7 +90,7 @@ export function Gallery({
     [],
   );
 
-  // Reset and reload when category changes (skip on first render — SSR data is already loaded)
+  // Reset and reload when the search query changes (skip on first render — SSR data is already loaded)
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
@@ -101,8 +99,8 @@ export function Gallery({
     }
     setPhotos([]);
     setCursor(null);
-    fetchPhotos(active, null);
-  }, [active, fetchPhotos]);
+    fetchPhotos(query, null);
+  }, [query, fetchPhotos]);
 
   // Infinite scroll sentinel
   useEffect(() => {
@@ -113,7 +111,7 @@ export function Gallery({
       ([entry]) => {
         if (entry.isIntersecting && !loadingRef.current) {
           setCursor((cur) => {
-            if (cur !== null) fetchPhotos(active, cur);
+            if (cur !== null) fetchPhotos(query, cur);
             return cur;
           });
         }
@@ -122,7 +120,7 @@ export function Gallery({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [active, fetchPhotos, albumMode]);
+  }, [query, fetchPhotos, albumMode]);
 
   const selectedIndex = photos.findIndex((p) => p.id === selectedId);
   const selected = selectedIndex >= 0 ? photos[selectedIndex] : null;
@@ -131,13 +129,9 @@ export function Gallery({
     <div className="min-h-screen bg-background">
 
       {!albumMode && (
-        <div className="sticky top-12 z-20 bg-background/80 backdrop-blur-md">
+        <div className="sticky top-12 z-20 border-b border-border bg-background/80 backdrop-blur-md">
           <div className="mx-auto max-w-[1600px] px-6 md:px-10">
-            <FilterBar
-              categories={categories}
-              active={active}
-              onChange={setActive}
-            />
+            <SearchBar onChange={setQuery} />
           </div>
         </div>
       )}
@@ -146,7 +140,9 @@ export function Gallery({
         <section id="work" className="pb-10">
           {photos.length === 0 && !loading ? (
             <div className="mt-10 flex min-h-[40vh] items-center justify-center">
-              <p className="eyebrow text-muted-foreground">No photos yet</p>
+              <p className="eyebrow text-muted-foreground">
+                {query ? "No matches found" : "No photos yet"}
+              </p>
             </div>
           ) : (
             <>

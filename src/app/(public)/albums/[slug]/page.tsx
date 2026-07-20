@@ -103,8 +103,6 @@ export default async function AlbumPage({
     orderBy: { position: "desc" },
   });
 
-  const categories = [...new Set(photos.map((p) => p.category.name))].sort();
-
   return (
     <main>
       <div className="mx-auto max-w-[1600px] px-6 pt-4 pb-3 md:px-10">
@@ -117,7 +115,6 @@ export default async function AlbumPage({
 
       <Gallery
         photos={photos.map(mapPhoto)}
-        categories={categories}
         initialNextCursor={null}
         albumMode
       />
