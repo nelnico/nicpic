@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
-import { Inter, Instrument_Serif, JetBrains_Mono } from "next/font/google";
-import { siteConfig } from "@/config/site";
 import { ContentGuard } from "@/components/gallery/content-guard";
+import { siteConfig } from "@/config/site";
+import { Analytics } from "@vercel/analytics/next";
+import type { Metadata } from "next";
+import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
@@ -41,6 +42,7 @@ export default function RootLayout({
       <body className="min-h-full">
         <ContentGuard />
         {children}
+        <Analytics />
       </body>
     </html>
   );
