@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { verifySession } from "@/lib/auth";
 import { Gallery } from "@/components/gallery/gallery";
 import type { Photo } from "@/types/photo";
 
@@ -97,11 +98,14 @@ export default async function AlbumPage({
     }
   }
 
-  const photos = await prisma.photo.findMany({
-    where: { albumId: album.id },
-    include,
-    orderBy: { position: "desc" },
-  });
+  const [photos, isAdmin] = await Promise.all([
+    prisma.photo.findMany({
+      where: { albumId: album.id },
+      include,
+      orderBy: { position: "desc" },
+    }),
+    verifySession(),
+  ]);
 
   return (
     <main>
@@ -117,6 +121,7 @@ export default async function AlbumPage({
         photos={photos.map(mapPhoto)}
         initialNextCursor={null}
         albumMode
+        isAdmin={isAdmin}
       />
     </main>
   );

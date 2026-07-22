@@ -13,6 +13,7 @@ interface GalleryProps {
   initialNextCursor: number | null;
   albumMode?: boolean;
   initialSelectedId?: string | null;
+  isAdmin?: boolean;
 }
 
 function mapApiPhoto(p: Record<string, unknown>): Photo {
@@ -56,6 +57,7 @@ export function Gallery({
   initialNextCursor,
   albumMode = false,
   initialSelectedId = null,
+  isAdmin = false,
 }: GalleryProps) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [loading, setLoading] = useState(false);
@@ -160,6 +162,11 @@ export function Gallery({
     [photos, query, fetchPhotos],
   );
 
+  const handleDeletePhoto = useCallback((photo: Photo) => {
+    setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    setSelectedId((cur) => (cur === photo.id ? null : cur));
+  }, []);
+
   const selectedIndex = photos.findIndex((p) => p.id === selectedId);
   const selected = selectedIndex >= 0 ? photos[selectedIndex] : null;
 
@@ -194,6 +201,8 @@ export function Gallery({
                     photo={photo}
                     index={i}
                     onSelect={(p) => setSelectedId(p.id)}
+                    isAdmin={isAdmin}
+                    onDelete={handleDeletePhoto}
                   />
                 ))}
               </div>

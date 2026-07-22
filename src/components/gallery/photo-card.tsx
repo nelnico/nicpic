@@ -18,9 +18,11 @@ interface PhotoCardProps {
   photo: Photo;
   index: number;
   onSelect: (photo: Photo) => void;
+  isAdmin?: boolean;
+  onDelete?: (photo: Photo) => void;
 }
 
-export function PhotoCard({ photo, index, onSelect }: PhotoCardProps) {
+export function PhotoCard({ photo, index, onSelect, isAdmin, onDelete }: PhotoCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [span, setSpan] = useState<number | undefined>(undefined);
 
@@ -39,6 +41,12 @@ export function PhotoCard({ photo, index, onSelect }: PhotoCardProps) {
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(`${window.location.origin}/photo/${photo.id}`);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this photo? This also removes it from R2.")) return;
+    const res = await fetch(`/api/admin/photos/${photo.id}`, { method: "DELETE" });
+    if (res.ok) onDelete?.(photo);
   };
 
   return (
@@ -94,6 +102,14 @@ export function PhotoCard({ photo, index, onSelect }: PhotoCardProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onClick={handleCopyLink}>Copy link</DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem
+                onClick={handleDelete}
+                className="text-destructive focus:text-destructive"
+              >
+                Delete
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { verifySession } from "@/lib/auth";
 import { Gallery } from "@/components/gallery/gallery";
 import type { Photo } from "@/types/photo";
 
@@ -72,5 +73,7 @@ export default async function HomePage() {
     // leave defaults — empty gallery
   }
 
-  return <Gallery photos={photos} initialNextCursor={initialNextCursor} />;
+  const isAdmin = await verifySession();
+
+  return <Gallery photos={photos} initialNextCursor={initialNextCursor} isAdmin={isAdmin} />;
 }

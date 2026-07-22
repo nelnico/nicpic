@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { verifySession } from "@/lib/auth";
 import { Gallery } from "@/components/gallery/gallery";
 import type { Photo } from "@/types/photo";
 
@@ -93,11 +94,14 @@ export default async function PhotoPage({
       );
     }
 
-    const photos = await prisma.photo.findMany({
-      where: { albumId: photo.album.id },
-      include,
-      orderBy: { position: "desc" },
-    });
+    const [photos, isAdmin] = await Promise.all([
+      prisma.photo.findMany({
+        where: { albumId: photo.album.id },
+        include,
+        orderBy: { position: "desc" },
+      }),
+      verifySession(),
+    ]);
 
     return (
       <Gallery
@@ -105,27 +109,31 @@ export default async function PhotoPage({
         initialNextCursor={null}
         albumMode
         initialSelectedId={id}
+        isAdmin={isAdmin}
       />
     );
   }
 
   // Public photo: load it in place within the home listing so the grid and
   // infinite scroll continue exactly as if it had been reached by scrolling.
-  const rows = await prisma.photo.findMany({
-    where: { NOT: { album: { isPrivate: true } }, position: { gte: photo.position } },
-    include,
-    orderBy: { position: "desc" },
-  });
-
-  const hasMoreBelow = await prisma.photo.count({
-    where: { NOT: { album: { isPrivate: true } }, position: { lt: photo.position } },
-  });
+  const [rows, hasMoreBelow, isAdmin] = await Promise.all([
+    prisma.photo.findMany({
+      where: { NOT: { album: { isPrivate: true } }, position: { gte: photo.position } },
+      include,
+      orderBy: { position: "desc" },
+    }),
+    prisma.photo.count({
+      where: { NOT: { album: { isPrivate: true } }, position: { lt: photo.position } },
+    }),
+    verifySession(),
+  ]);
 
   return (
     <Gallery
       photos={rows.map(mapPhoto)}
       initialNextCursor={hasMoreBelow > 0 ? photo.position : null}
       initialSelectedId={id}
+      isAdmin={isAdmin}
     />
   );
 }
