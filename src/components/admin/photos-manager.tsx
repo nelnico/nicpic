@@ -16,13 +16,11 @@ type Opt = { id: string; name: string };
 type ApiPhoto = {
   id: string;
   title: string | null;
-  description: string | null;
   r2Url: string;
   r2ThumbUrl: string | null;
   categoryId: string;
   locationId: string | null;
   takenAt: string | null;
-  takenWhere: string | null;
   albumId: string | null;
   tags: { tag: { name: string } }[];
 };
@@ -31,11 +29,9 @@ function toEditable(p: ApiPhoto): EditablePhoto {
   return {
     id: p.id,
     title: p.title ?? "",
-    description: p.description ?? "",
     categoryId: p.categoryId,
     locationId: p.locationId ?? "none",
     takenAt: p.takenAt ? p.takenAt.slice(0, 10) : "",
-    takenWhere: p.takenWhere ?? "",
     albumId: p.albumId ?? "none",
     tags: p.tags.map((t) => t.tag.name),
     r2Url: p.r2Url,

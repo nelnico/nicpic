@@ -29,10 +29,8 @@ function mapApiPhoto(p: Record<string, unknown>): Photo {
     width: p.width as number,
     height: p.height as number,
     title: (p.title ?? "") as string,
-    description: (p.description ?? "") as string,
     category: category.name,
     location: location?.name ?? "",
-    where: (p.takenWhere ?? "") as string,
     date: takenAt
       ? new Date(takenAt).toLocaleString("en-US", {
           month: "long",

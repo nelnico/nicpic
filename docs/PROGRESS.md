@@ -1,7 +1,7 @@
 # Build Progress — Nico's Photo Portfolio
 
 > **Purpose:** single source of truth for where this build is, so work can resume after any restart.
-> **Last updated:** 2026-08-12 (lint clean, build green)
+> **Last updated:** 2026-08-12 (description/takenWhere fields removed, lint clean, build green)
 
 ---
 
@@ -121,6 +121,10 @@ The gallery is a fully functional photo portfolio with:
 
 ### Featured flag — removed
 - Removed from schema, API, admin UI, and photo dialog.
+
+### Description / takenWhere fields — removed
+- `Photo.description` and `Photo.takenWhere` dropped from schema, both API routes, admin `photo-dialog.tsx` (Description textarea + "Where taken" input gone) and `photos-manager.tsx`, `types/photo.ts`, gallery/lightbox rendering, and all three public page mappers (`page.tsx`, `albums/[slug]/page.tsx`, `photo/[id]/page.tsx`). Search matching in `/api/photos` now covers title/category/location/tag only.
+- Applied via `prisma db push --accept-data-loss` — 11 photos had a non-null `takenWhere` value at drop time; that data is gone.
 
 ### Public gallery
 - **CSS Grid masonry**: `gridAutoRows: 4px`, `gap: 12px`, span computed via `ResizeObserver` on the `<img>` element (`contentRect.height`). Observing the image (not the button) fixes stale spans on column-count breakpoint crossings.

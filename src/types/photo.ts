@@ -13,12 +13,8 @@ export interface Photo {
   category: string;
   /** Structured location name ("" when none). */
   location: string;
-  /** Free-text "where taken" detail ("" when none). */
-  where: string;
   date: string;
   tags: string[];
-  /** Optional description ("" when none). */
-  description: string;
   // EXIF fields ("" when not set).
   cameraMake: string;
   cameraModel: string;

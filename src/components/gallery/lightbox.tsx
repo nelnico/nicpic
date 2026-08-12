@@ -36,9 +36,6 @@ function PhotoDetails({ photo }: { photo: Photo }) {
 
   return (
     <div className="overflow-y-auto bg-background/90 px-6 pb-4 pt-6 backdrop-blur-md md:px-10">
-      {photo.description && (
-        <p className="mb-5 text-sm leading-relaxed">{photo.description}</p>
-      )}
       {camera && <p className="mb-3 text-sm">{camera}</p>}
       {grid.length > 0 && (
         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -375,7 +372,6 @@ export function Lightbox({ photos, index, onClose, onNavigate }: LightboxProps) 
             <p className="eyebrow text-muted-foreground">
               {photo.category}
               {photo.location ? ` — ${photo.location}` : ""}
-              {photo.where ? ` · ${photo.where}` : ""}
             </p>
             {photo.title && (
               <h2 className="mt-1 font-serif text-2xl leading-tight">{photo.title}</h2>

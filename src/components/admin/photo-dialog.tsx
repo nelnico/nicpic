@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
@@ -25,12 +24,10 @@ type Opt = { id: string; name: string };
 export type EditablePhoto = {
   id: string;
   title: string;
-  description: string;
   categoryId: string;
   locationId: string;
   albumId: string;
   takenAt: string;
-  takenWhere: string;
   tags: string[];
   r2Url: string;
 };
@@ -205,9 +202,7 @@ export function PhotoDialog({
   const [locationId, setLocationId] = useState(photo?.locationId ?? "none");
   const [albumId, setAlbumId] = useState(photo?.albumId ?? "none");
   const [title, setTitle] = useState(photo?.title ?? "");
-  const [description, setDescription] = useState(photo?.description ?? "");
   const [takenAt, setTakenAt] = useState(photo?.takenAt ?? "");
-  const [takenWhere, setTakenWhere] = useState(photo?.takenWhere ?? "");
   const [tags, setTags] = useState(photo?.tags.join(", ") ?? "");
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -237,12 +232,10 @@ export function PhotoDialog({
   function metaBody() {
     return {
       title: title || null,
-      description: description || null,
       categoryId,
       locationId: locationId === "none" ? null : locationId,
       albumId: albumId === "none" ? null : albumId,
       takenAt: takenAt || null,
-      takenWhere: takenWhere || null,
       tags: tags
         .split(",")
         .map((t) => t.trim())
@@ -532,31 +525,20 @@ export function PhotoDialog({
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="pd-where">Where taken</Label>
-                <Input
-                  id="pd-where"
-                  value={takenWhere}
-                  onChange={(e) => setTakenWhere(e.target.value)}
-                  placeholder="e.g. Near Lower Sabie Rest Camp"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>
-                  When taken
-                  {!isEdit && (
-                    <span className="ml-1 font-normal text-muted-foreground">
-                      (auto-filled from EXIF if blank)
-                    </span>
-                  )}
-                </Label>
-                <DatePicker
-                  value={takenAt}
-                  onChange={setTakenAt}
-                  placeholder="Pick a date"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>
+                When taken
+                {!isEdit && (
+                  <span className="ml-1 font-normal text-muted-foreground">
+                    (auto-filled from EXIF if blank)
+                  </span>
+                )}
+              </Label>
+              <DatePicker
+                value={takenAt}
+                onChange={setTakenAt}
+                placeholder="Pick a date"
+              />
             </div>
 
             <div className="space-y-2">
@@ -565,16 +547,6 @@ export function PhotoDialog({
                 id="pd-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Optional"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pd-desc">Description</Label>
-              <Textarea
-                id="pd-desc"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional"
               />
             </div>
@@ -612,7 +584,7 @@ export function PhotoDialog({
                 <p className="text-xs text-muted-foreground">
                   {files.length} photos selected — all will share the same
                   category, location, date, and tags. EXIF is read per-file.
-                  Edit titles &amp; descriptions individually afterwards.
+                  Edit titles individually afterwards.
                 </p>
               )}
             </div>

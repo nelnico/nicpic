@@ -29,9 +29,9 @@ export async function GET(request: NextRequest) {
   const cursor = parseCursor(cursorParam);
   const limit  = limitParam === "0" ? 0 : Math.min(parseInt(limitParam ?? String(DEFAULT_LIMIT)), 100);
 
-  // Each word must match at least one field (category, location, tag, title,
-  // description, or free-text "taken where"); words are ANDed together so
-  // e.g. "ocean seagull" finds photos tagged "seagull" in the "ocean" category.
+  // Each word must match at least one field (category, location, tag, or
+  // title); words are ANDed together so e.g. "ocean seagull" finds photos
+  // tagged "seagull" in the "ocean" category.
   const words = q ? q.trim().split(/\s+/).filter(Boolean) : [];
 
   const conditions: Prisma.PhotoWhereInput[] = [
@@ -55,8 +55,6 @@ export async function GET(request: NextRequest) {
       AND: words.map((word) => ({
         OR: [
           { title: { contains: word, mode: "insensitive" as const } },
-          { description: { contains: word, mode: "insensitive" as const } },
-          { takenWhere: { contains: word, mode: "insensitive" as const } },
           { category: { name: { contains: word, mode: "insensitive" as const } } },
           { location: { name: { contains: word, mode: "insensitive" as const } } },
           { tags: { some: { tag: { name: { contains: word, mode: "insensitive" as const } } } } },

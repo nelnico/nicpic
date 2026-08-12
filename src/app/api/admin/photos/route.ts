@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifySession } from "@/lib/auth";
 import { processAndStoreImage } from "@/lib/photo-processing";
-import { computeSortDate } from "@/lib/photo-sort-date";
+import { computeSortDate, resolveTakenAt } from "@/lib/photo-sort-date";
 
 export const maxDuration = 30;
 
@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const {
     title,
-    description,
     categoryId,
     locationId,
     cameraMake,
@@ -27,7 +26,6 @@ export async function POST(request: NextRequest) {
     meteringMode,
     flash,
     takenAt,
-    takenWhere,
     r2Key,
     r2Url,
     thumbKey,
@@ -60,13 +58,12 @@ export async function POST(request: NextRequest) {
     tagConnections.push({ tagId: tag.id });
   }
 
-  const takenAtDate = takenAt ? new Date(takenAt) : null;
+  const takenAtDate = resolveTakenAt(takenAt);
   const uploadedAt = new Date();
 
   const photo = await prisma.photo.create({
     data: {
       title,
-      description,
       categoryId,
       locationId: locationId || null,
       cameraMake: cameraMake || null,
@@ -79,7 +76,6 @@ export async function POST(request: NextRequest) {
       meteringMode: meteringMode || null,
       flash: flash || null,
       takenAt: takenAtDate,
-      takenWhere,
       r2Key,
       r2Url,
       r2ThumbKey: resolvedThumbKey,

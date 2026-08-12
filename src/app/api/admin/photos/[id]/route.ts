@@ -5,7 +5,7 @@ import { verifySession } from "@/lib/auth";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { r2Client, R2_BUCKET } from "@/lib/r2";
 import { processAndStoreImage } from "@/lib/photo-processing";
-import { computeSortDate } from "@/lib/photo-sort-date";
+import { computeSortDate, resolveTakenAt } from "@/lib/photo-sort-date";
 
 export async function DELETE(
   _request: NextRequest,
@@ -48,7 +48,6 @@ export async function PATCH(
 
   const data: Prisma.PhotoUncheckedUpdateInput = {};
   if ("title" in body) data.title = body.title || null;
-  if ("description" in body) data.description = body.description || null;
   if ("categoryId" in body) data.categoryId = body.categoryId;
   if ("locationId" in body) data.locationId = body.locationId || null;
   if ("cameraMake" in body) data.cameraMake = body.cameraMake || null;
@@ -61,11 +60,12 @@ export async function PATCH(
   if ("meteringMode" in body) data.meteringMode = body.meteringMode || null;
   if ("flash" in body) data.flash = body.flash || null;
   if ("takenAt" in body) {
-    const takenAtDate = body.takenAt ? new Date(body.takenAt) : null;
+    // Set only when replacing the image (fresh EXIF read) — resolves to the
+    // EXIF capture date, or the current date/time if none is found.
+    const takenAtDate = resolveTakenAt(body.takenAt);
     data.takenAt = takenAtDate;
     data.sortDate = computeSortDate(takenAtDate, existing.createdAt);
   }
-  if ("takenWhere" in body) data.takenWhere = body.takenWhere || null;
   if ("albumId" in body) data.albumId = body.albumId || null;
 
   // Replace tags only when an array is provided.
