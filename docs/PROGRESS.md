@@ -1,7 +1,7 @@
 # Build Progress — Nico's Photo Portfolio
 
 > **Purpose:** single source of truth for where this build is, so work can resume after any restart.
-> **Last updated:** 2026-07-13 (lint clean, build green)
+> **Last updated:** 2026-08-12 (lint clean, build green)
 
 ---
 
@@ -10,8 +10,8 @@
 **App is live on Vercel. Build is green. All core features done.**
 
 The gallery is a fully functional photo portfolio with:
-- **Public gallery** — CSS Grid masonry, left-to-right ordering, infinite scroll (30/page, cursor-based), category filter tabs, lightbox with swipe + pinch-to-zoom + EXIF panel.
-- **Admin** — drag-and-drop photo reordering, thumbnail grid, upload/edit dialog, category/location/tag management.
+- **Public gallery** — CSS Grid masonry, sortDate ordering, infinite scroll (30/page, cursor-based), category filter tabs, lightbox with swipe + pinch-to-zoom + EXIF panel.
+- **Admin** — thumbnail grid (order follows sortDate, no manual reordering), upload/edit dialog, category/location/tag management.
 - **Storage** — Cloudflare R2 (upload via presigned URL, thumbnails generated server-side with jimp).
 - **DB** — Neon Postgres via Prisma 7 + `@prisma/adapter-pg`.
 
@@ -39,7 +39,6 @@ The gallery is a fully functional photo portfolio with:
 | Image processing | jimp (pure JS — sharp fails on Vercel serverless) | jimp 1.x |
 | Photo storage | Cloudflare R2 via AWS S3 SDK v3 | @aws-sdk/client-s3 |
 | Auth | Hardcoded password → signed JWT cookie (`jose`) via `src/proxy.ts` | jose 6 |
-| Drag-and-drop | dnd-kit | @dnd-kit/core, /sortable, /utilities |
 | Hosting | Vercel | live |
 
 ---
@@ -64,17 +63,13 @@ The gallery is a fully functional photo portfolio with:
 
 ## Key features implemented
 
-### Photo ordering
-- `Photo.position Int` column (replaced `featured`). Oldest photo = position 1, newest = N.
-- Gallery orders by `position DESC` (highest = top).
-- New uploads get `max(position) + 1` automatically.
-- Backfilled via `scripts/backfill-positions.mjs` (ran once).
+### Photo ordering — automatic by date (replaced manual position)
+- `Photo.position Int` column removed; replaced with `Photo.sortDate DateTime`.
+- `sortDate` = `takenAt` when known, else `createdAt` (upload time) — computed via `computeSortDate()` in `src/lib/photo-sort-date.ts`, kept in sync on create/update.
+- Gallery orders by `sortDate DESC` (indexed).
+- Existing rows backfilled once via `scripts/backfill-positions.mjs` when the `position` column shipped; now superseded by `scripts/backfill-sort-date.mjs` (ran once, sets `sortDate = COALESCE(takenAt, createdAt)`).
 - **Schema applied via `prisma db push` (not migrate)** due to pre-existing drift. See migration note below.
-
-### Admin drag-and-drop reorder
-- `PATCH /api/admin/photos/reorder` accepts `{ ids: string[] }` in display order, writes positions in a transaction.
-- Admin grid uses dnd-kit (`rectSortingStrategy`), optimistic update with server rollback on error.
-- Thumbnail grid: `grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8`.
+- **Admin drag-and-drop reorder removed** — no more manual ordering. `PATCH /api/admin/photos/reorder` and dnd-kit deleted; admin thumbnail grid (`grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8`) is now a plain read-only grid, ordered by `sortDate` like the public gallery.
 
 ### Upload photo dialog enhancements
 - **+ buttons on selects**: Category, Location, and Album selects each have a small `+` button that opens a quick-add dialog. Validates (not empty, not duplicate), saves to API, auto-selects the new item.
@@ -129,7 +124,7 @@ The gallery is a fully functional photo portfolio with:
 
 ### Public gallery
 - **CSS Grid masonry**: `gridAutoRows: 4px`, `gap: 12px`, span computed via `ResizeObserver` on the `<img>` element (`contentRect.height`). Observing the image (not the button) fixes stale spans on column-count breakpoint crossings.
-- **Infinite scroll**: cursor-based (`position DESC`), 30 photos/page, `IntersectionObserver` sentinel with `rootMargin: 300px`. `isFirstRender` ref skips mount fetch (SSR data already loaded).
+- **Infinite scroll**: cursor-based (`sortDate DESC`), 30 photos/page, `IntersectionObserver` sentinel with `rootMargin: 300px`. `isFirstRender` ref skips mount fetch (SSR data already loaded).
 - **Category filter**: re-fetches from server on change (complete filtered view, not client-side slice).
 - **Filter bar**: `sticky` (not `fixed`) so it shares the same horizontal reference as the nav and content — fixes left-edge misalignment caused by `scrollbar-gutter: stable both-edges` applying differently to fixed vs flow elements.
 
@@ -167,7 +162,7 @@ src/
 │  │  ├─ lightbox.tsx                # full-screen lightbox + pinch zoom
 │  │  └─ content-guard.tsx           # (layout-level)
 │  └─ admin/
-│     ├─ photos-manager.tsx          # dnd-kit drag-to-reorder thumbnail grid
+│     ├─ photos-manager.tsx          # thumbnail grid, ordered by sortDate (read-only)
 │     ├─ photo-dialog.tsx            # upload + edit dialog (+ quick-add dialogs, date picker)
 │     ├─ album-photos-manager.tsx    # per-album photo grid (remove + add)
 │     ├─ albums-manager.tsx          # albums CRUD card + Photos link per album
@@ -195,10 +190,10 @@ src/
          ├─ albums/[id]/route.ts     # PATCH (inc. generateCode), DELETE
          ├─ albums/[id]/photos/route.ts  # GET photos in album
          ├─ album-codes/[id]/route.ts    # DELETE — revoke individual access code
-         ├─ photos/[id]/route.ts
-         └─ photos/reorder/route.ts  # PATCH — drag-and-drop position save
+         └─ photos/[id]/route.ts
 prisma/schema.prisma                 # Category, Location, Photo, Album, AlbumAccessCode, Tag, PhotoTag
-scripts/backfill-positions.mjs       # one-time position backfill (already ran)
+scripts/backfill-positions.mjs       # one-time position backfill (superseded, already ran)
+scripts/backfill-sort-date.mjs       # one-time sortDate backfill (already ran)
 ```
 
 ---
@@ -228,9 +223,8 @@ scripts/backfill-positions.mjs       # one-time position backfill (already ran)
 
 The app is production-ready for Nico's personal use. Likely next things when photo uploads resume (holiday):
 
-1. **Upload photos** via `/admin` — they'll get correct positions automatically.
-2. **Reorder** via drag-and-drop in admin if needed.
-3. **Monitor** Vercel function logs if anything breaks at scale.
+1. **Upload photos** via `/admin` — they'll sort correctly by `sortDate` automatically.
+2. **Monitor** Vercel function logs if anything breaks at scale.
 
 ---
 
