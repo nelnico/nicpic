@@ -63,12 +63,16 @@ model Photo {
   r2ThumbUrl   String?
   width        Int
   height       Int
-  position     Int        @default(0)
+  // Display-order key: takenAt when known, else createdAt (upload time) as fallback.
+  // Kept in sync on create/update — see src/lib/photo-sort-date.ts.
+  sortDate     DateTime
   albumId      String?
   album        Album?     @relation("AlbumPhotos", fields: [albumId], references: [id], onDelete: SetNull)
   albumCover   Album[]    @relation("AlbumCover")
   tags         PhotoTag[]
   createdAt    DateTime   @default(now())
+
+  @@index([sortDate])
 }
 
 model Album {

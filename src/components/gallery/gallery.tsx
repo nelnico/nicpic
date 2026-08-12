@@ -10,7 +10,7 @@ const LIMIT = 30;
 
 interface GalleryProps {
   photos: Photo[];
-  initialNextCursor: number | null;
+  initialNextCursor: string | null;
   albumMode?: boolean;
   initialSelectedId?: string | null;
   isAdmin?: boolean;
@@ -66,22 +66,22 @@ export function Gallery({
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
-  const cursorRef = useRef<number | null>(initialNextCursor);
+  const cursorRef = useRef<string | null>(initialNextCursor);
 
   const fetchPhotos = useCallback(
-    async (q: string, cur: number | null) => {
+    async (q: string, cur: string | null) => {
       if (loadingRef.current) return;
       loadingRef.current = true;
       setLoading(true);
       try {
         const params = new URLSearchParams({ limit: String(LIMIT) });
         if (q) params.set("q", q);
-        if (cur !== null) params.set("cursor", String(cur));
+        if (cur !== null) params.set("cursor", cur);
 
         const res = await fetch(`/api/photos?${params}`);
         const data = (await res.json()) as {
           photos: Record<string, unknown>[];
-          nextCursor: number | null;
+          nextCursor: string | null;
         };
 
         const mapped = data.photos.map(mapApiPhoto);

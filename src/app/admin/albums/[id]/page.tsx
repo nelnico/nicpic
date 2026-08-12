@@ -17,7 +17,7 @@ export default async function AlbumAdminPage({
     prisma.photo.findMany({
       where: { albumId: id },
       select: { id: true, title: true, r2Url: true, r2ThumbUrl: true },
-      orderBy: { position: "desc" },
+      orderBy: [{ sortDate: "desc" }, { id: "desc" }],
     }),
   ]);
 

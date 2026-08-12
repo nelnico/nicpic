@@ -102,7 +102,7 @@ export default async function AlbumPage({
     prisma.photo.findMany({
       where: { albumId: album.id },
       include,
-      orderBy: { position: "desc" },
+      orderBy: [{ sortDate: "desc" }, { id: "desc" }],
     }),
     verifySession(),
   ]);

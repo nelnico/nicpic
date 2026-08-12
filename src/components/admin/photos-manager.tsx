@@ -1,22 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { GripVertical } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  arrayMove,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,7 +19,6 @@ type ApiPhoto = {
   description: string | null;
   r2Url: string;
   r2ThumbUrl: string | null;
-  position: number;
   categoryId: string;
   locationId: string | null;
   takenAt: string | null;
@@ -59,35 +42,15 @@ function toEditable(p: ApiPhoto): EditablePhoto {
   };
 }
 
-function SortablePhoto({
+function PhotoThumb({
   photo,
   onEdit,
 }: {
   photo: ApiPhoto;
   onEdit: (p: ApiPhoto) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: photo.id });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-    zIndex: isDragging ? 10 : undefined,
-  };
-
   return (
-    <div ref={setNodeRef} style={style} className="group relative">
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        className="absolute right-0.5 top-0.5 z-10 cursor-grab rounded bg-background/70 p-0.5 backdrop-blur-sm active:cursor-grabbing"
-        aria-label="Drag to reorder"
-      >
-        <GripVertical className="h-3 w-3 text-muted-foreground" />
-      </button>
-
+    <div className="group relative">
       <button
         type="button"
         onClick={() => onEdit(photo)}
@@ -118,10 +81,6 @@ export function PhotosManager() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EditablePhoto | null>(null);
   const [createKey, setCreateKey] = useState(0);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  );
 
   async function loadPhotos() {
     const data = await fetch("/api/photos?limit=0").then((r) => r.json());
@@ -155,29 +114,6 @@ export function PhotosManager() {
     setDialogOpen(true);
   }
 
-  async function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = photos.findIndex((p) => p.id === active.id);
-    const newIndex = photos.findIndex((p) => p.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reordered = arrayMove(photos, oldIndex, newIndex);
-    setPhotos(reordered);
-
-    try {
-      const res = await fetch("/api/admin/photos/reorder", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: reordered.map((p) => p.id) }),
-      });
-      if (!res.ok) throw new Error("Reorder failed");
-    } catch {
-      await loadPhotos();
-    }
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -196,26 +132,11 @@ export function PhotosManager() {
             No photos yet — hit <strong>Upload</strong> to add one.
           </p>
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={photos.map((p) => p.id)}
-              strategy={rectSortingStrategy}
-            >
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
-                {photos.map((p) => (
-                  <SortablePhoto
-                    key={p.id}
-                    photo={p}
-                    onEdit={openEdit}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+            {photos.map((p) => (
+              <PhotoThumb key={p.id} photo={p} onEdit={openEdit} />
+            ))}
+          </div>
         )}
       </CardContent>
 

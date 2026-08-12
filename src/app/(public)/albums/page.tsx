@@ -15,7 +15,7 @@ export default async function AlbumsPageRoute() {
         location: true,
         photos: {
           take: 4,
-          orderBy: { position: "desc" },
+          orderBy: [{ sortDate: "desc" }, { id: "desc" }],
           select: { id: true, r2ThumbUrl: true, r2Url: true },
         },
         _count: { select: { photos: true } },

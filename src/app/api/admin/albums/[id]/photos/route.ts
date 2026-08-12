@@ -14,7 +14,7 @@ export async function GET(
   const photos = await prisma.photo.findMany({
     where: { albumId: id },
     include: { category: true, location: true },
-    orderBy: { position: "desc" },
+    orderBy: [{ sortDate: "desc" }, { id: "desc" }],
   });
   return NextResponse.json(photos);
 }

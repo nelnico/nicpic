@@ -5,6 +5,7 @@ import { verifySession } from "@/lib/auth";
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { r2Client, R2_BUCKET } from "@/lib/r2";
 import { processAndStoreImage } from "@/lib/photo-processing";
+import { computeSortDate } from "@/lib/photo-sort-date";
 
 export async function DELETE(
   _request: NextRequest,
@@ -42,6 +43,9 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json();
 
+  const existing = await prisma.photo.findUnique({ where: { id } });
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   const data: Prisma.PhotoUncheckedUpdateInput = {};
   if ("title" in body) data.title = body.title || null;
   if ("description" in body) data.description = body.description || null;
@@ -56,7 +60,11 @@ export async function PATCH(
   if ("exposureMode" in body) data.exposureMode = body.exposureMode || null;
   if ("meteringMode" in body) data.meteringMode = body.meteringMode || null;
   if ("flash" in body) data.flash = body.flash || null;
-  if ("takenAt" in body) data.takenAt = body.takenAt ? new Date(body.takenAt) : null;
+  if ("takenAt" in body) {
+    const takenAtDate = body.takenAt ? new Date(body.takenAt) : null;
+    data.takenAt = takenAtDate;
+    data.sortDate = computeSortDate(takenAtDate, existing.createdAt);
+  }
   if ("takenWhere" in body) data.takenWhere = body.takenWhere || null;
   if ("albumId" in body) data.albumId = body.albumId || null;
 
@@ -82,8 +90,6 @@ export async function PATCH(
   let oldR2Key: string | null = null;
   let oldR2ThumbKey: string | null = null;
   if (body.r2Key && body.r2Url && body.thumbKey) {
-    const existing = await prisma.photo.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     oldR2Key = existing.r2Key;
     oldR2ThumbKey = existing.r2ThumbKey;
 

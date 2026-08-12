@@ -47,13 +47,14 @@ async function fetchInitial() {
   const rows = await prisma.photo.findMany({
     where: { NOT: { album: { isPrivate: true } } },
     include,
-    orderBy: { position: "desc" },
+    orderBy: [{ sortDate: "desc" }, { id: "desc" }],
     take: INITIAL_LIMIT + 1,
   });
 
   const hasMore    = rows.length > INITIAL_LIMIT;
   const batch      = hasMore ? rows.slice(0, INITIAL_LIMIT) : rows;
-  const nextCursor = hasMore ? batch[batch.length - 1].position : null;
+  const last       = batch[batch.length - 1];
+  const nextCursor = hasMore && last ? `${last.sortDate.toISOString()}_${last.id}` : null;
 
   return {
     photos: batch,
@@ -63,7 +64,7 @@ async function fetchInitial() {
 
 export default async function HomePage() {
   let photos: Photo[] = [];
-  let initialNextCursor: number | null = null;
+  let initialNextCursor: string | null = null;
 
   try {
     const data = await fetchInitial();

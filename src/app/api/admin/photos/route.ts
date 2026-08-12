@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifySession } from "@/lib/auth";
 import { processAndStoreImage } from "@/lib/photo-processing";
+import { computeSortDate } from "@/lib/photo-sort-date";
 
 export const maxDuration = 30;
 
@@ -59,8 +60,8 @@ export async function POST(request: NextRequest) {
     tagConnections.push({ tagId: tag.id });
   }
 
-  const { _max } = await prisma.photo.aggregate({ _max: { position: true } });
-  const nextPosition = (_max.position ?? 0) + 1;
+  const takenAtDate = takenAt ? new Date(takenAt) : null;
+  const uploadedAt = new Date();
 
   const photo = await prisma.photo.create({
     data: {
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       exposureMode: exposureMode || null,
       meteringMode: meteringMode || null,
       flash: flash || null,
-      takenAt: takenAt ? new Date(takenAt) : null,
+      takenAt: takenAtDate,
       takenWhere,
       r2Key,
       r2Url,
@@ -85,7 +86,8 @@ export async function POST(request: NextRequest) {
       r2ThumbUrl: r2ThumbUrl,
       width:  processedWidth,
       height: processedHeight,
-      position: nextPosition,
+      sortDate: computeSortDate(takenAtDate, uploadedAt),
+      createdAt: uploadedAt,
       albumId: albumId || null,
       tags: {
         create: tagConnections,

@@ -98,7 +98,7 @@ export default async function PhotoPage({
       prisma.photo.findMany({
         where: { albumId: photo.album.id },
         include,
-        orderBy: { position: "desc" },
+        orderBy: [{ sortDate: "desc" }, { id: "desc" }],
       }),
       verifySession(),
     ]);
@@ -116,14 +116,29 @@ export default async function PhotoPage({
 
   // Public photo: load it in place within the home listing so the grid and
   // infinite scroll continue exactly as if it had been reached by scrolling.
+  // "At or before this photo" / "strictly after it" mirror the [sortDate desc, id desc]
+  // ordering used everywhere else (see /api/photos), so the cursor can pick up seamlessly.
+  const atOrBeforePhoto = {
+    OR: [
+      { sortDate: { gt: photo.sortDate } },
+      { sortDate: photo.sortDate, id: { gte: photo.id } },
+    ],
+  };
+  const strictlyAfterPhoto = {
+    OR: [
+      { sortDate: { lt: photo.sortDate } },
+      { sortDate: photo.sortDate, id: { lt: photo.id } },
+    ],
+  };
+
   const [rows, hasMoreBelow, isAdmin] = await Promise.all([
     prisma.photo.findMany({
-      where: { NOT: { album: { isPrivate: true } }, position: { gte: photo.position } },
+      where: { AND: [{ NOT: { album: { isPrivate: true } } }, atOrBeforePhoto] },
       include,
-      orderBy: { position: "desc" },
+      orderBy: [{ sortDate: "desc" }, { id: "desc" }],
     }),
     prisma.photo.count({
-      where: { NOT: { album: { isPrivate: true } }, position: { lt: photo.position } },
+      where: { AND: [{ NOT: { album: { isPrivate: true } } }, strictlyAfterPhoto] },
     }),
     verifySession(),
   ]);
@@ -131,7 +146,7 @@ export default async function PhotoPage({
   return (
     <Gallery
       photos={rows.map(mapPhoto)}
-      initialNextCursor={hasMoreBelow > 0 ? photo.position : null}
+      initialNextCursor={hasMoreBelow > 0 ? `${photo.sortDate.toISOString()}_${photo.id}` : null}
       initialSelectedId={id}
       isAdmin={isAdmin}
     />
