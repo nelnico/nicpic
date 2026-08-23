@@ -96,6 +96,8 @@ model AlbumAccessCode {
   albumId   String
   album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
   code      String
+  /// Who this code was handed to, so it can be revoked by name. Admin-only.
+  label     String?
   expiresAt DateTime
   createdAt DateTime @default(now())
 }

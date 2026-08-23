@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 
 type Opt = { id: string; name: string };
-type AccessCode = { id: string; code: string; expiresAt: string; createdAt: string };
+type AccessCode = { id: string; code: string; label: string | null; expiresAt: string; createdAt: string };
 type Album = {
   id: string;
   name: string;
@@ -156,6 +156,7 @@ function AlbumDialog({
   const [codes, setCodes] = useState<AccessCode[]>(album?.accessCodes ?? []);
   const [busy, setBusy] = useState(false);
   const [generatingCode, setGeneratingCode] = useState(false);
+  const [codeLabel, setCodeLabel] = useState("");
   const [error, setError] = useState("");
 
   const [localCategories, setLocalCategories] = useState<Opt[]>(categories);
@@ -173,6 +174,7 @@ function AlbumDialog({
       setCategoryId(album?.categoryId ?? "none");
       setLocationId(album?.locationId ?? "none");
       setCodes(album?.accessCodes ?? []);
+      setCodeLabel("");
       setError("");
       setLocalCategories(categories);
       setLocalLocations(locations);
@@ -238,11 +240,12 @@ function AlbumDialog({
       const res = await fetch(`/api/admin/albums/${album!.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generateCode: true }),
+        body: JSON.stringify({ generateCode: true, codeLabel: codeLabel.trim() || null }),
       });
       if (!res.ok) throw new Error("Failed to generate code.");
       const updated = await res.json();
       setCodes(updated.accessCodes ?? []);
+      setCodeLabel("");
       onSaved();
     } finally {
       setGeneratingCode(false);
@@ -361,8 +364,15 @@ function AlbumDialog({
             {/* Access codes — only shown when editing an existing private album */}
             {isEdit && isPrivate && (
               <div className="space-y-2 rounded-md border border-border p-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">Access codes</p>
+                <p className="text-sm font-medium">Access codes</p>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={codeLabel}
+                    onChange={(e) => setCodeLabel(e.target.value)}
+                    placeholder="Who is this for? (optional)"
+                    maxLength={60}
+                    className="h-8 text-sm"
+                  />
                   <Button
                     type="button"
                     size="sm"
@@ -379,15 +389,20 @@ function AlbumDialog({
                   <ul className="space-y-1.5">
                     {activeCodes.map((c) => (
                       <li key={c.id} className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-sm tracking-widest">{c.code}</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="min-w-0 flex-1 truncate">
+                          <span className="font-mono text-sm tracking-widest">{c.code}</span>
+                          {c.label && (
+                            <span className="ml-2 text-sm text-muted-foreground">— {c.label}</span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
                           expires in {hoursUntil(c.expiresAt)}
                         </span>
                         <Button
                           type="button"
                           size="sm"
                           variant="ghost"
-                          className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+                          className="h-6 shrink-0 px-2 text-xs text-destructive hover:text-destructive"
                           onClick={() => revokeCode(c.id)}
                         >
                           Revoke

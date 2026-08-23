@@ -21,7 +21,7 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const { name, description, categoryId, locationId, coverPhotoId, isPrivate, generateCode } = body;
+  const { name, description, categoryId, locationId, coverPhotoId, isPrivate, generateCode, codeLabel } = body;
 
   const data: Record<string, unknown> = {};
   if (name !== undefined) {
@@ -40,6 +40,7 @@ export async function PATCH(
       data: {
         albumId: id,
         code: randomCode(),
+        label: typeof codeLabel === "string" && codeLabel.trim() ? codeLabel.trim().slice(0, 60) : null,
         expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000),
       },
     });
