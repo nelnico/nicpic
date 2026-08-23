@@ -115,3 +115,10 @@ model PhotoTag {
 
   @@id([photoId, tagId])
 }
+
+/// Fixed-window counter used to throttle access-code attempts.
+model RateLimit {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime
+}

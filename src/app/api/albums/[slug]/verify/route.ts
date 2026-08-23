@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(
   request: NextRequest,
@@ -7,6 +11,19 @@ export async function POST(
 ) {
   const { slug } = await params;
   const { code } = await request.json();
+
+  // Throttle before touching the code so a script can't grind through guesses.
+  const limit = await rateLimit(
+    `album-verify:${slug}:${clientIp(request)}`,
+    MAX_ATTEMPTS,
+    WINDOW_MS
+  );
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many attempts. Try again later." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
 
   const album = await prisma.album.findUnique({
     where: { slug },

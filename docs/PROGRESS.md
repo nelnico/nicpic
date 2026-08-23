@@ -113,10 +113,12 @@ The gallery is a fully functional photo portfolio with:
 - `AlbumAccessCode` model: `id, albumId, code (6-char), expiresAt (48h from creation), createdAt`. Multiple independent codes per album — each is valid for 48h from when it was generated.
 - Admin: checkbox in album dialog; when checked, shows active access codes list (code + "expires in X hours" + Revoke button) and a Generate Code button. Revoke calls `DELETE /api/admin/album-codes/[id]`.
 - `PATCH /api/admin/albums/[id]` with `{ generateCode: true }` creates a new `AlbumAccessCode` record.
-- Public `/albums`: private album cards show blurred cover with lock icon overlay. Clicking opens a code-entry dialog inline. Entering a valid code calls `POST /api/albums/[slug]/verify`, which validates against DB and sets httpOnly cookie `alb_{albumId}` = the code (maxAge = seconds until code expiry).
+- Public `/albums`: locked private album cards show a plain lock placeholder — **no imagery**. The server (`src/app/(public)/albums/page.tsx`) strips `photos` to `[]` for any private album the visitor hasn't unlocked, so the R2 URLs never reach the client. (Previously the real thumbnails were sent and only CSS-blurred, which meant anyone could read them out of the page source.) Clicking opens a code-entry dialog inline. Entering a valid code calls `POST /api/albums/[slug]/verify`, which validates against DB and sets httpOnly cookie `alb_{albumId}` = the code (maxAge = seconds until code expiry).
 - Public `/albums/[slug]`: server component reads `alb_{albumId}` cookie, validates against `AlbumAccessCode` in DB (code match + not expired). Invalid → shows locked UI with link back to /albums. Valid → renders gallery normally.
 - **Private album photos excluded from home page**: `src/app/(public)/page.tsx` and `src/app/api/photos/route.ts` both filter `NOT: { album: { isPrivate: true } }`. Categories with only private-album photos also disappear from the home page filter tabs.
-- **Unlock persists until code expires**: `/albums` server page checks each private album's cookie on load. If valid, the album renders unblurred and links directly — no code re-entry. Cookie maxAge matches code expiry (up to 48h). Admin always sees all albums unblurred.
+- **Unlock persists until code expires**: `/albums` server page checks each private album's cookie on load. If valid, the album renders its real cover and links directly — no code re-entry. Cookie maxAge matches code expiry (up to 48h). Admin always sees all albums unlocked.
+- **Brute-force throttle**: `POST /api/albums/[slug]/verify` is rate limited to **5 attempts per IP per album per 15 min**, then returns `429` with a `Retry-After` header. Backed by the `RateLimit` table (`key, count, expiresAt`) via `src/lib/rate-limit.ts` — Postgres rather than in-memory, because Vercel spreads requests across short-lived instances. The upsert is one atomic `INSERT … ON CONFLICT … RETURNING`, so concurrent requests can't race the counter. Known limit: per-IP only, so a distributed/botnet attack isn't covered.
+- R2 object keys are UUIDs (`photos/<uuid>.<ext>`), so public bucket URLs are unguessable — they're effectively secret links. That only holds as long as nothing leaks them, which is why the cover placeholder above matters.
 - **Album collage robustness**: cover photos filtered to only those with valid URLs; grid rendered from `photos.length` not `_count.photos` to prevent blank cells from broken/missing images.
 
 ### Featured flag — removed
@@ -153,6 +155,7 @@ src/
 │  ├─ r2.ts                          # S3 client → R2
 │  ├─ photo-processing.ts            # resize + thumbnail via jimp, shared by upload + replace
 │  ├─ auth.ts                        # JWT session cookie helpers
+│  ├─ rate-limit.ts                  # Postgres fixed-window throttle (access-code attempts)
 │  └─ utils.ts                       # shadcn cn()
 ├─ config/site.ts                    # all branding (name, eyebrow, title, description)
 ├─ types/photo.ts                    # Photo + Category types (public shape)
@@ -187,7 +190,7 @@ src/
    │  └─ albums/[id]/page.tsx        # per-album photo management (server component)
    └─ api/
       ├─ photos/route.ts             # public: cursor-paginated, category filter, excludes private-album photos
-      ├─ albums/[slug]/verify/route.ts  # POST: validate access code, set httpOnly cookie
+      ├─ albums/[slug]/verify/route.ts  # POST: validate access code, set httpOnly cookie (rate limited)
       └─ admin/
          ├─ login / logout / presign / categories / locations / photos
          ├─ albums/route.ts          # GET list, POST create

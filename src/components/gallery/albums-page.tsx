@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FilterBar } from "@/components/gallery/filter-bar";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,15 @@ interface AlbumsPageProps {
 }
 
 function AlbumCover({ album, isAdmin, unlocked }: { album: Album; isAdmin?: boolean; unlocked?: boolean }) {
+  // Locked private albums arrive with no photos at all — show a lock, not imagery.
+  if (album.isPrivate && !isAdmin && !unlocked) {
+    return (
+      <div className="flex aspect-square w-full items-center justify-center bg-muted">
+        <Lock className="h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
+      </div>
+    );
+  }
+
   const photos = album.photos.filter((p) => p.r2ThumbUrl || p.r2Url);
   const inner =
     photos.length === 0 ? (
@@ -59,14 +69,6 @@ function AlbumCover({ album, isAdmin, unlocked }: { album: Album; isAdmin?: bool
         ))}
       </div>
     );
-
-  if (album.isPrivate && !isAdmin && !unlocked) {
-    return (
-      <div className="relative aspect-square w-full overflow-hidden bg-muted">
-        <div className="absolute -inset-4 scale-110" style={{ filter: "blur(18px)" }}>{inner}</div>
-      </div>
-    );
-  }
 
   return (
     <div className="aspect-square w-full overflow-hidden bg-muted">{inner}</div>

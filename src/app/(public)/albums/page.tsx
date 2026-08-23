@@ -49,9 +49,17 @@ export default async function AlbumsPageRoute() {
 
   const categories = catRows.map((c) => c.name);
 
+  // Never send a locked album's photo URLs to the client — the cover is a
+  // placeholder, not a blurred copy of the real images.
+  const visibleAlbums = albums.map((album) =>
+    album.isPrivate && !isAdmin && !unlockedIds.has(album.id)
+      ? { ...album, photos: [] }
+      : album
+  );
+
   return (
     <AlbumsPage
-      albums={albums}
+      albums={visibleAlbums}
       categories={categories}
       isAdmin={isAdmin}
       unlockedAlbumIds={[...unlockedIds]}
