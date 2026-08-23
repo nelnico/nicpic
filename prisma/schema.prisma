@@ -67,6 +67,10 @@ model Photo {
   albumId      String?
   album        Album?     @relation("AlbumPhotos", fields: [albumId], references: [id], onDelete: SetNull)
   albumCover   Album[]    @relation("AlbumCover")
+  // Optional sub-grouping within an album (e.g. one model per group). A photo
+  // belongs to at most one group; ungrouped photos render after the groups.
+  groupId      String?
+  group        PhotoGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   tags         PhotoTag[]
   createdAt    DateTime   @default(now())
 
@@ -86,9 +90,24 @@ model Album {
   coverPhotoId String?
   coverPhoto   Photo?            @relation("AlbumCover", fields: [coverPhotoId], references: [id], onDelete: SetNull)
   photos       Photo[]           @relation("AlbumPhotos")
+  groups       PhotoGroup[]
   accessCodes  AlbumAccessCode[]
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+}
+
+/// A named sub-grouping of photos inside one album — e.g. one group per model.
+model PhotoGroup {
+  id        String   @id @default(cuid())
+  albumId   String
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  name      String
+  slug      String
+  photos    Photo[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([albumId, slug])
 }
 
 model AlbumAccessCode {

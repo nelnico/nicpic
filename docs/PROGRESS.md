@@ -102,6 +102,19 @@ The gallery is a fully functional photo portfolio with:
 - Nav lives in `app/(public)/layout.tsx` — shared across all public pages. Admin has its own layout.
 - `focalLength35mm` removed from schema, API, dialog, types, gallery, lightbox.
 
+### Photo groups (sub-albums within an album)
+- `PhotoGroup` model: `id, albumId (Cascade), name, slug, createdAt, updatedAt`, `@@unique([albumId, slug])`. `Photo.groupId` optional FK → `PhotoGroup` (`onDelete: SetNull`).
+- **A photo belongs to at most one group** — folder semantics, not tags. Deleting a group leaves its photos in the album, ungrouped.
+- Public `/albums/[slug]`: group cards render first (same `CollageCover` as album cards, sorted A–Z by name), then ungrouped photos in the normal masonry `Gallery` below. Photos inside a group are excluded from that grid (`where: { albumId, groupId: null }`) — they're reached through the card.
+- Public `/albums/[slug]/[groupSlug]`: the group's own gallery page with breadcrumb `Albums › Album › Group`.
+- **Groups inherit the parent album's privacy** — the group page runs the same access-code gate. Gate logic extracted into `canViewAlbum()` in `src/lib/album-access.ts`, shared by both pages (was duplicated inline).
+- `CollageCover` (`src/components/gallery/collage-cover.tsx`) extracted from the album card so album cards and group cards stay visually identical: 2×2 grid at 4+ photos, single image below that.
+- Groups never appear on `/albums` — they only exist inside their album.
+- Admin `/admin/albums/[id]`: **New group** button, then one bordered section per group (rename ✏️ / delete 🗑 / "Move photos here"), followed by an **Ungrouped** section. The group picker only offers loose photos from the same album; the album picker still pulls from unassigned photos site-wide.
+- `POST /api/admin/groups` (create), `PATCH|DELETE /api/admin/groups/[id]` (rename / delete). Slug collisions within an album return `409`.
+- `PATCH /api/admin/photos/[id]` now accepts `groupId`. Setting `albumId` without `groupId` clears the group — a group belongs to one album, so leaving the album must drop the group too.
+- Slug generation shared via `slugify()` in `src/lib/slugify.ts`.
+
 ### Album categories
 - `Album.categoryId` optional FK → `Category` (onDelete: SetNull).
 - `Category` model now has `albums Album[]` relation.
@@ -158,6 +171,8 @@ src/
 │  ├─ photo-processing.ts            # resize + thumbnail via jimp, shared by upload + replace
 │  ├─ auth.ts                        # JWT session cookie helpers
 │  ├─ rate-limit.ts                  # Postgres fixed-window throttle (access-code attempts)
+│  ├─ album-access.ts                # canViewAlbum() — shared private-album gate
+│  ├─ slugify.ts                     # shared name → URL slug
 │  └─ utils.ts                       # shadcn cn()
 ├─ config/site.ts                    # all branding (name, eyebrow, title, description)
 ├─ types/photo.ts                    # Photo + Category types (public shape)
@@ -193,6 +208,8 @@ src/
    └─ api/
       ├─ photos/route.ts             # public: cursor-paginated, category filter, excludes private-album photos
       ├─ albums/[slug]/verify/route.ts  # POST: validate access code, set httpOnly cookie (rate limited)
+      ├─ admin/groups/route.ts          # POST: create photo group
+      ├─ admin/groups/[id]/route.ts     # PATCH rename / DELETE group
       └─ admin/
          ├─ login / logout / presign / categories / locations / photos
          ├─ albums/route.ts          # GET list, POST create

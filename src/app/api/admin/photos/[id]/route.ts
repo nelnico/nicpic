@@ -66,7 +66,12 @@ export async function PATCH(
     data.takenAt = takenAtDate;
     data.sortDate = computeSortDate(takenAtDate, existing.createdAt);
   }
-  if ("albumId" in body) data.albumId = body.albumId || null;
+  if ("albumId" in body) {
+    data.albumId = body.albumId || null;
+    // A group belongs to one album, so leaving the album must drop the group too.
+    if (!("groupId" in body)) data.groupId = null;
+  }
+  if ("groupId" in body) data.groupId = body.groupId || null;
 
   // Replace tags only when an array is provided.
   if (Array.isArray(body.tags)) {

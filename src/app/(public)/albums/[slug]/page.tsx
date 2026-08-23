@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { verifySession } from "@/lib/auth";
+import { canViewAlbum } from "@/lib/album-access";
 import { Gallery } from "@/components/gallery/gallery";
+import { CollageCover } from "@/components/gallery/collage-cover";
 import type { Photo } from "@/types/photo";
 
 function formatMonthYear(d: Date): string {
@@ -55,50 +56,47 @@ export default async function AlbumPage({
   });
   if (!album) notFound();
 
-  // Gate private albums behind a valid access code cookie
-  if (album.isPrivate) {
-    const jar = await cookies();
-    const cookieCode = jar.get(`alb_${album.id}`)?.value;
-
-    const valid = cookieCode
-      ? await prisma.albumAccessCode.findFirst({
-          where: {
-            albumId: album.id,
-            code: cookieCode,
-            expiresAt: { gt: new Date() },
-          },
-        })
-      : null;
-
-    if (!valid) {
-      return (
-        <main className="mx-auto max-w-[1600px] px-6 pt-4 pb-10 md:px-10">
+  if (!(await canViewAlbum(album))) {
+    return (
+      <main className="mx-auto max-w-[1600px] px-6 pt-4 pb-10 md:px-10">
+        <p className="text-sm text-muted-foreground">
+          <Link href="/albums" className="hover:text-foreground transition-colors">Albums</Link>
+          <span className="mx-1.5">›</span>
+          {album.name}
+        </p>
+        <div className="mt-16 flex flex-col items-center gap-4 text-center">
+          <span className="text-4xl">🔒</span>
+          <p className="text-lg font-medium">This album is private</p>
           <p className="text-sm text-muted-foreground">
-            <Link href="/albums" className="hover:text-foreground transition-colors">Albums</Link>
-            <span className="mx-1.5">›</span>
-            {album.name}
+            Go back to albums and enter your access code to view it.
           </p>
-          <div className="mt-16 flex flex-col items-center gap-4 text-center">
-            <span className="text-4xl">🔒</span>
-            <p className="text-lg font-medium">This album is private</p>
-            <p className="text-sm text-muted-foreground">
-              Go back to albums and enter your access code to view it.
-            </p>
-            <Link
-              href="/albums"
-              className="mt-2 text-sm underline underline-offset-4 hover:text-foreground text-muted-foreground transition-colors"
-            >
-              Back to albums
-            </Link>
-          </div>
-        </main>
-      );
-    }
+          <Link
+            href="/albums"
+            className="mt-2 text-sm underline underline-offset-4 hover:text-foreground text-muted-foreground transition-colors"
+          >
+            Back to albums
+          </Link>
+        </div>
+      </main>
+    );
   }
 
-  const [photos, isAdmin] = await Promise.all([
-    prisma.photo.findMany({
+  const [groups, photos, isAdmin] = await Promise.all([
+    prisma.photoGroup.findMany({
       where: { albumId: album.id },
+      include: {
+        photos: {
+          take: 4,
+          orderBy: [{ sortDate: "desc" }, { id: "desc" }],
+          select: { id: true, r2ThumbUrl: true, r2Url: true },
+        },
+        _count: { select: { photos: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
+    // Only the loose photos — anything in a group is reached through its card.
+    prisma.photo.findMany({
+      where: { albumId: album.id, groupId: null },
       include,
       orderBy: [{ sortDate: "desc" }, { id: "desc" }],
     }),
@@ -115,12 +113,41 @@ export default async function AlbumPage({
         </p>
       </div>
 
-      <Gallery
-        photos={photos.map(mapPhoto)}
-        initialNextCursor={null}
-        albumMode
-        isAdmin={isAdmin}
-      />
+      {groups.length > 0 && (
+        <div className="mx-auto max-w-[1600px] px-6 pb-2 md:px-10">
+          <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {groups.map((group) => (
+              <Link key={group.id} href={`/albums/${album.slug}/${group.slug}`}>
+                <div className="group block overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-foreground/30">
+                  <CollageCover photos={group.photos} alt={group.name} />
+                  <div className="p-3">
+                    <p className="font-medium leading-tight">{group.name}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {group._count.photos} photos
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+          {photos.length > 0 && <div className="mt-8 border-t border-border" />}
+        </div>
+      )}
+
+      {photos.length > 0 ? (
+        <Gallery
+          photos={photos.map(mapPhoto)}
+          initialNextCursor={null}
+          albumMode
+          isAdmin={isAdmin}
+        />
+      ) : (
+        groups.length === 0 && (
+          <div className="mx-auto max-w-[1600px] px-6 pb-10 md:px-10">
+            <p className="text-sm text-muted-foreground">No photos in this album yet.</p>
+          </div>
+        )
+      )}
     </main>
   );
 }
