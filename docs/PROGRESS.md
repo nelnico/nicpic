@@ -88,6 +88,14 @@ The gallery is a fully functional photo portfolio with:
 - `AlbumsManager` each album row has a **Photos** link navigating to this page.
 - `noAlbum=true` query param added to `/api/photos` — adds `WHERE albumId IS NULL` at DB level.
 
+### Admin photo grid — paginated
+- `PhotosManager` used to fetch the entire library in one go (`/api/photos?limit=0`), which got slow once the count passed ~200. Now pages 48 at a time using the same cursor pagination as the public gallery.
+- The grid sits in a `max-h-[60vh] overflow-y-auto` box so it stops pushing the Library section off the page. The `IntersectionObserver` sets `root` to that scroll box (not the viewport), so the sentinel fires against the box's own scroll position.
+- `cursorRef` / `loadingRef` are refs, not state, so the observer callback always reads current values without being rebuilt per page.
+- Thumbnails are `loading="lazy"` — the browser skips fetching what's scrolled out of view.
+- Saving a photo calls `reloadPhotos()`, which resets the cursor and re-fetches page one.
+- ⚠️ Pre-existing, unchanged: this grid reads `/api/photos`, which always filters out private-album photos — so private-album photos don't appear here. They're managed from `/admin/albums/[id]`.
+
 ### UX polish
 - Categories/Locations: clicking the name opens the edit dialog (no separate Edit button).
 - Albums: same — click name to edit; location removed from the row display.

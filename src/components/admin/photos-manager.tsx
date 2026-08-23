@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -57,6 +57,7 @@ function PhotoThumb({
         <img
           src={photo.r2ThumbUrl ?? photo.r2Url}
           alt={photo.title ?? "photo"}
+          loading="lazy"
           className="aspect-square w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
       </button>
@@ -68,6 +69,8 @@ function PhotoThumb({
   );
 }
 
+const PAGE_SIZE = 48;
+
 export function PhotosManager() {
   const [photos, setPhotos] = useState<ApiPhoto[]>([]);
   const [categories, setCategories] = useState<Opt[]>([]);
@@ -78,11 +81,33 @@ export function PhotosManager() {
   const [editing, setEditing] = useState<EditablePhoto | null>(null);
   const [createKey, setCreateKey] = useState(0);
 
-  async function loadPhotos() {
-    const data = await fetch("/api/photos?limit=0").then((r) => r.json());
-    const list = Array.isArray(data) ? data : (data?.photos ?? []);
-    setPhotos(list);
-  }
+  // Cursor + in-flight flag live in refs so the observer callback always sees
+  // current values without having to be torn down and rebuilt each page.
+  const cursorRef = useRef<string | null>(null);
+  const loadingRef = useRef(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const fetchPage = useCallback(async (cursor: string | null) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    try {
+      const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+      if (cursor) params.set("cursor", cursor);
+      const data = await fetch(`/api/photos?${params}`).then((r) => r.json());
+      const list: ApiPhoto[] = Array.isArray(data) ? data : (data?.photos ?? []);
+      cursorRef.current = data?.nextCursor ?? null;
+      setPhotos((prev) => (cursor ? [...prev, ...list] : list));
+    } finally {
+      loadingRef.current = false;
+    }
+  }, []);
+
+  /** Reload from the top — used after an upload or edit changes the list. */
+  const reloadPhotos = useCallback(async () => {
+    cursorRef.current = null;
+    await fetchPage(null);
+  }, [fetchPage]);
 
   useEffect(() => {
     const get = (k: string, set: (v: Opt[]) => void) =>
@@ -93,11 +118,28 @@ export function PhotosManager() {
     get("categories", setCategories);
     get("locations", setLocations);
     get("albums", setAlbums);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadPhotos()
+    fetchPage(null)
       .catch(() => setPhotos([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [fetchPage]);
+
+  // Infinite scroll inside the fixed-height grid — `root` is the scroll box,
+  // not the viewport, so the sentinel fires as the box itself nears its end.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || loading) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !loadingRef.current && cursorRef.current !== null) {
+          fetchPage(cursorRef.current);
+        }
+      },
+      { root: scrollRef.current, rootMargin: "300px" }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchPage, loading]);
 
   function openCreate() {
     setCreateKey((k) => k + 1);
@@ -128,10 +170,16 @@ export function PhotosManager() {
             No photos yet — hit <strong>Upload</strong> to add one.
           </p>
         ) : (
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
-            {photos.map((p) => (
-              <PhotoThumb key={p.id} photo={p} onEdit={openEdit} />
-            ))}
+          <div
+            ref={scrollRef}
+            className="max-h-[60vh] overflow-y-auto pr-1"
+          >
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+              {photos.map((p) => (
+                <PhotoThumb key={p.id} photo={p} onEdit={openEdit} />
+              ))}
+            </div>
+            <div ref={sentinelRef} className="h-px" />
           </div>
         )}
       </CardContent>
@@ -144,7 +192,7 @@ export function PhotosManager() {
         categories={categories}
         locations={locations}
         albums={albums}
-        onSaved={loadPhotos}
+        onSaved={reloadPhotos}
       />
     </Card>
   );
