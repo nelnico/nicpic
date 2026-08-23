@@ -180,6 +180,7 @@ export function AlbumsPage({ albums, categories, isAdmin, unlockedAlbumIds = [] 
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {visible.map((album) => {
+              const locked = album.isPrivate && !isAdmin && !unlockedSet.has(album.id);
               const card = (
                 <div className="group block overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-foreground/30">
                   <AlbumCover album={album} isAdmin={isAdmin} unlocked={unlockedSet.has(album.id)} />
@@ -188,12 +189,16 @@ export function AlbumsPage({ albums, categories, isAdmin, unlockedAlbumIds = [] 
                     {album.location && (
                       <p className="mt-0.5 text-xs text-muted-foreground">{album.location.name}</p>
                     )}
-                    <p className="mt-1 text-xs text-muted-foreground">{album._count.photos} photos</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {locked
+                        ? "Obtain code from site owner to unlock"
+                        : `${album._count.photos} photos`}
+                    </p>
                   </div>
                 </div>
               );
 
-              if (album.isPrivate && !isAdmin && !unlockedSet.has(album.id)) {
+              if (locked) {
                 return (
                   <button
                     key={album.id}

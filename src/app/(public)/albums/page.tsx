@@ -49,11 +49,11 @@ export default async function AlbumsPageRoute() {
 
   const categories = catRows.map((c) => c.name);
 
-  // Never send a locked album's photo URLs to the client — the cover is a
-  // placeholder, not a blurred copy of the real images.
+  // Never send a locked album's photo URLs or photo count to the client — the
+  // card is a placeholder, not a hidden copy of the real thing.
   const visibleAlbums = albums.map((album) =>
     album.isPrivate && !isAdmin && !unlockedIds.has(album.id)
-      ? { ...album, photos: [] }
+      ? { ...album, photos: [], _count: { photos: 0 } }
       : album
   );
 
